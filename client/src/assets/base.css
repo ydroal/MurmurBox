@@ -1,5 +1,5 @@
 :root {
-  --custom-orange: #DFB068;
+  --custom-orange: #DEAA5A;
   --custom-ivory: #EFEDE8;
   --custom-dark: #30353A;
 }
@@ -23,9 +23,40 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+textarea {
+  resize: none;
+  scrollbar-width: thin;
+}
+
+textarea::-webkit-scrollbar {
+  width: 3px; /* スクロールバーの幅 */
+}
+
+textarea::-webkit-scrollbar-track {
+  background: #EFEDE8; /* トラックの背景色 */
+}
+
+textarea::-webkit-scrollbar-thumb {
+  background: #888; /* スクロールバーの色 */
+}
+
+textarea::-webkit-scrollbar-thumb:hover {
+  background: #555; /* ホバー時のスクロールバーの色 */
+}
+
+ /* checkboxのリセット */
+input[type="checkbox"] {
+  background: none;
+  border: none;
+  outline: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
 @media (max-width: 768px) {
-  body {
+  /* body {
     background-size: cover;
     background-repeat: no-repeat;
-  }
+  } */
 }
