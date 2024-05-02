@@ -1,5 +1,5 @@
 :root {
-  --custom-orange: #DFB068;
+  --custom-orange: #DEAA5A;
   --custom-ivory: #EFEDE8;
   --custom-dark: #30353A;
 }
@@ -23,9 +23,74 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+textarea {
+  resize: none;
+  scrollbar-width: thin;
+}
+
+textarea:focus {
+  outline: none;
+  border: 2px solid var(--custom-orange); 
+}
+
+
+textarea::-webkit-scrollbar {
+  width: 3px; /* スクロールバーの幅 */
+}
+
+textarea::-webkit-scrollbar-track {
+  background: #EFEDE8; /* トラックの背景色 */
+}
+
+textarea::-webkit-scrollbar-thumb {
+  background: #888; /* スクロールバーの色 */
+}
+
+textarea::-webkit-scrollbar-thumb:hover {
+  background: #555; /* ホバー時のスクロールバーの色 */
+}
+
+ /* checkboxのリセット */
+input[type="checkbox"] {
+  background: none;
+  border: none;
+  outline: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+#scrollbar::-webkit-scrollbar
+{
+  width:5px;
+  background:#eee;
+}
+
+#scrollbar::-webkit-scrollbar:horizontal
+{
+  height:5px;
+}
+
+#scrollbar::-webkit-scrollbar-piece
+{
+  background:var(--custom-ivory);
+}
+#scrollbar::-webkit-scrollbar-piece:start
+{
+  background:var(--custom-ivory);
+}
+#scrollbar::-webkit-scrollbar-thumb
+{
+  background:#333;
+}
+#scrollbar::-webkit-scrollbar-corner
+{
+  background:#333;
+}
+
 @media (max-width: 768px) {
-  body {
+  /* body {
     background-size: cover;
     background-repeat: no-repeat;
-  }
+  } */
 }
