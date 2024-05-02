@@ -111,24 +111,28 @@ const postDiary = async () => {
       >
         Post
       </button>
-      <div class="flex justify-end mt-3 space-x-4">
-        <div flex flex-col>
+      <div class="flex justify-end mt-3 mr-0.5 space-x-6">
+        <div class="flex flex-col -mt-[0.2rem]">
           <p class="font-jp text-dark text-sm font-semibold mb-0.5">公開範囲</p>
-          <div class="flex items-center">
-            <input id="default-checkbox" type="checkbox" value="" />
-            <label for="default-checkbox" class="ms-2 text-sm font-en text-dark">Private</label>
-          </div>
+          <fieldset class="checkbox flex flex-col items-start">
+            <label for="visibility-checkbox" class="ml-0 text-sm font-jp text-dark">
+              <input id="visibility-checkbox" type="checkbox" value="" />
+              Private
+            </label>
+          </fieldset>
         </div>
-        <div flex flex-col>
+        <div class="flex flex-col -mt-[0.2rem]">
           <p class="font-jp text-dark text-sm font-semibold mb-0.5">添削リクエスト</p>
-          <div class="flex items-center mb-0.5">
-            <input id="default-checkbox" type="checkbox" value="" checked disabled />
-            <label for="default-checkbox" class="ms-2 text-sm font-jp text-dark">自動添削（固定）</label>
-          </div>
-          <div class="flex items-center">
-            <input id="default-checkbox" type="checkbox" value="" />
-            <label for="default-checkbox" class="ms-2 text-sm font-jp text-dark">ユーザー添削</label>
-          </div>
+          <fieldset class="checkbox flex flex-col items-start">
+            <label for="auto-correction-checkbox" class="ml-0 mb-0.5 text-sm font-jp text-dark">
+              <input id="auto-correction-checkbox" type="checkbox" value="" checked disabled />
+              自動添削（固定）
+            </label>
+            <label for="user-correction-checkbox" class="ml-0 text-sm font-jp text-dark">
+              <input id="user-correction-checkbox" type="checkbox" value="" />
+              ユーザー添削
+            </label>
+          </fieldset>
         </div>
       </div>
     </div>
@@ -136,42 +140,49 @@ const postDiary = async () => {
 </template>
 
 <style scoped>
-input[type='checkbox'] {
-  padding-left: 1.4rem;
-  vertical-align: middle;
+.checkbox {
+  border: none;
+}
+
+.checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 0 0.5em;
   position: relative;
+  /* margin-bottom: 0.5em; */
+  cursor: pointer;
 }
 
-input[type='checkbox']::before,
-input[type='checkbox']::after {
+.checkbox label::before,
+.checkbox label:has(:checked)::after {
   content: '';
-  display: block;
-  position: absolute;
 }
 
-input[type='checkbox']::before {
+.checkbox label::before {
+  width: 17px;
+  height: 17px;
+  border-radius: 3px;
   background-color: transparent;
-  border-radius: 5px;
-  border: 1px solid var(--custom-dark);
-  width: 16px;
-  height: 16px;
-  transform: translateY(-50%);
-  top: 50%;
-  left: 5px;
+  border: solid var(--custom-dark);
 }
 
-input[type='checkbox']::after {
-  border-bottom: 3px solid var(--custom-dark);
-  border-left: 3px solid var(--custom-dark); /*チェックの太さ*/
-  opacity: 0; /*チェック前は非表示*/
-  height: 6px; /*チェックの高さ*/
-  width: 11px; /*チェックの横幅*/
-  transform: rotate(-45deg);
-  top: -4px; /*チェック時の位置調整*/
-  left: 8px; /*チェック時の位置調整*/
+.checkbox label:has(:checked)::before {
+  background-color: #deaa5a;
+  border: none;
 }
 
-input[type='checkbox']:checked::after {
-  opacity: 1; /*チェック後表示*/
+.checkbox label:has(:checked)::after {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  transform: rotate(45deg);
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+}
+
+.checkbox input {
+  display: none;
 }
 </style>

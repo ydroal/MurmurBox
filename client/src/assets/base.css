@@ -28,6 +28,12 @@ textarea {
   scrollbar-width: thin;
 }
 
+textarea:focus {
+  outline: none;
+  border: 2px solid var(--custom-orange); 
+}
+
+
 textarea::-webkit-scrollbar {
   width: 3px; /* スクロールバーの幅 */
 }
@@ -52,6 +58,34 @@ input[type="checkbox"] {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
+}
+
+#scrollbar::-webkit-scrollbar
+{
+  width:5px;
+  background:#eee;
+}
+
+#scrollbar::-webkit-scrollbar:horizontal
+{
+  height:5px;
+}
+
+#scrollbar::-webkit-scrollbar-piece
+{
+  background:var(--custom-ivory);
+}
+#scrollbar::-webkit-scrollbar-piece:start
+{
+  background:var(--custom-ivory);
+}
+#scrollbar::-webkit-scrollbar-thumb
+{
+  background:#333;
+}
+#scrollbar::-webkit-scrollbar-corner
+{
+  background:#333;
 }
 
 @media (max-width: 768px) {

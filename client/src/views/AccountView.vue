@@ -96,9 +96,9 @@ watch(editMode, newValue => {
 </script>
 
 <template>
-  <div class="pt-24 px-5 flex justify-center">
+  <div class="pt-36 px-5 flex justify-center">
     <div
-      class="bg-dark rounded-1 w-[600px] h-[438px] rounded-3xl relative flex flex-col items-center justify-center mt-4"
+      class="bg-dark rounded-1 w-[600px] h-[400px] rounded-3xl relative flex flex-col items-center justify-center mt-4"
     >
       <div class="bg-white rounded-full w-28 h-28 absolute -top-14 truncate">
         <input id="file-input" type="file" @change="onFileChange" :disabled="!editMode" class="hidden" />

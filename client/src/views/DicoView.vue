@@ -42,7 +42,7 @@
         <div class="flex justify-end mt-3">
           <router-link to="/my-dico">
             <div class="flex flex-col justify-center items-center w-[60px] h-[60px] bg-dark rounded-[15px]">
-              <img src="@/assets/icons/icon_dico.svg" alt="My dico" />
+              <img src="@/assets/icons/icon_dico.svg" alt="My dico" class="icon-container" />
               <span class="text-xs text-ivory mt-1">My Dico</span>
             </div>
           </router-link>
@@ -51,3 +51,9 @@
     </div>
   </div>
 </template>
+
+<style scoped>
+.icon-container:hover {
+  transform: scale(1.05);
+}
+</style>

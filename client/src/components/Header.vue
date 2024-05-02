@@ -17,6 +17,11 @@ import LoginButton from './LoginButton.vue';
 </template>
 
 <style scoped>
+header {
+  background-image: url('@/assets/images/background.png');
+  background-repeat: repeat;
+  background-attachment: fixed;
+}
 .logo {
   width: 93%;
 }
