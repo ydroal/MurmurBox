@@ -4,7 +4,7 @@ import LoginButton from './LoginButton.vue';
 </script>
 
 <template>
-  <header class="h-32 flex justify-between px-4 py-5 md:px-16 fixed top-0 left-0 right-0 z-50">
+  <header class="h-32 flex justify-between px-4 py-5 md:px-16 fixed top-0 left-0 right-0 z-30">
     <router-link to="/">
       <img src="@/assets/logo.svg" alt="MurmurBox Logo" class="logo" />
     </router-link>

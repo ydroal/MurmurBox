@@ -1,6 +1,43 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { auth } from '@/firebase';
+import { getRedirectResult } from 'firebase/auth';
 import axiosInstance from '@/axios';
+import { useLoginModalStore } from '@/stores/loginModal';
+import LoginModal from '@/components/LoginModal.vue';
+import { useUserStore } from '@/stores/user';
+
+// マウント時にリダイレクト結果を取得
+onMounted(() => {
+  getRedirectResult(auth)
+    .then(async result => {
+      if (result) {
+        console.log('Redirect result:', result);
+
+        try {
+          // result.userからIDトークンを取得
+          const googleIdToken = await result.user.getIdToken();
+          console.log(googleIdToken);
+
+          // バックエンドにIDトークンを送信
+          const res = await axiosInstance.post('/auth/google/validate', {
+            token: googleIdToken
+          });
+
+          const userStore = useUserStore();
+          userStore.user = res.data.user; // ユーザー情報を保存
+          localStorage.setItem('jwt', res.data.jwt); // JWTトークンを保存
+        } catch (error) {
+          console.error('バックエンドへのトークン送信エラー:', error);
+        }
+      }
+    })
+    .catch(error => {
+      console.error('Google 認証エラー:', error);
+    });
+});
+
+const loginModalStore = useLoginModalStore();
 
 const jpText = ref('');
 const frText = ref('');
@@ -137,6 +174,7 @@ const postDiary = async () => {
       </div>
     </div>
   </div>
+  <LoginModal v-if="loginModalStore.isOpen" />
 </template>
 
 <style scoped>
