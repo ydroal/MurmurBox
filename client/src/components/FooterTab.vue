@@ -7,7 +7,7 @@ const router = useRouter();
 
 <template>
   <footer
-    class="font-en w-[600px] rounded-3xl fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-dark shadow-md flex justify-around items-center"
+    class="font-en w-[600px] rounded-3xl fixed bottom-5 left-1/2 -translate-x-1/2 z-30 bg-dark shadow-md flex justify-around items-center"
   >
     <nav class="flex justify-between items-center max-w-screen-xl mx-auto px-[2.75rem] py-[0.6rem]">
       <router-link to="/" class="tab" :class="{ active: $route.path === '/' }">

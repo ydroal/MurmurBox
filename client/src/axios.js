@@ -1,11 +1,11 @@
 import axios from 'axios';
 
-const axiosInstance = axios.create();
+// const axiosInstance = axios.create();
 
 // ベースURLの設定
-// const axiosInstance = axios.create({
-//   baseURL: 'https://api.later',
-// });
+const axiosInstance = axios.create({
+  baseURL: import.meta.env.VITE_APP_API_ENDPOINT
+});
 
 // axiosのデフォルト設定
 // インターセプターの設定

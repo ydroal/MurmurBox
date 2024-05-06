@@ -1,27 +1,32 @@
 <script setup>
-import { ref } from 'vue';
+import { computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { useLoginModalStore } from '@/stores/loginModal';
+import { useUserStore } from '@/stores/user';
 
-const isLoggedIn = ref(false);
+const loginModalStore = useLoginModalStore();
+const userStore = useUserStore();
 
-function toggleLogin() {
-  isLoggedIn.value = !isLoggedIn.value;
+const isUserLoggedIn = computed(() => userStore.isLoggedIn);
+const router = useRouter();
 
-  // ユーザーがログイン状態によって処理を変える
-  if (isLoggedIn.value) {
-    // ログイン処理
-  } else {
-    // ログアウト処理
-  }
-}
+const login = () => {
+  loginModalStore.openModal(); // openModalアクションを呼び出してログインモーダルを表示
+};
+
+const logout = () => {
+  userStore.logout();
+  router.push('/');
+};
 </script>
 
 <template>
   <div>
     <button
       class="mr-5 mt-0.5 w-[3.8rem] h-[1.4rem] outline outline-1 outline-dark outline-offset-[3px] bg-dark font-en text-sm leading-5 rounded-xl text-ivory hover:bg-dark50"
-      @click="toggleLogin"
+      @click="isUserLoggedIn ? logout() : login()"
     >
-      {{ isLoggedIn ? 'Log out' : 'Log in' }}
+      {{ isUserLoggedIn ? 'Log out' : 'Log in' }}
     </button>
   </div>
 </template>
