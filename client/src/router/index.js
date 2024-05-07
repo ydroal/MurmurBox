@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { useUserStore } from '@/stores/user';
+import { useLoginModalStore } from '@/stores/loginModal';
 import HomeView from '../views/HomeView.vue';
 import AccountView from '../views/AccountView.vue';
 import DiaryView from '../views/DiaryView.vue';
@@ -18,34 +20,57 @@ const router = createRouter({
     {
       path: '/account',
       name: 'account',
-      component: AccountView
+      component: AccountView,
+      meta: { requiresAuth: true }
     },
     {
       path: '/diary',
       name: 'diary',
-      component: DiaryView
+      component: DiaryView,
+      meta: { requiresAuth: true }
     },
     {
       path: '/dico',
       name: 'dico',
-      component: DicoView
+      component: DicoView,
+      meta: { requiresAuth: true }
     },
     {
       path: '/my-dico',
       name: 'my-dico',
-      component: MyDicoView
+      component: MyDicoView,
+      meta: { requiresAuth: true }
     },
     {
       path: '/feed',
       name: 'feed',
-      component: FeedView
+      component: FeedView,
+      meta: { requiresAuth: true }
     },
     {
       path: '/editme',
       name: 'editme',
-      component: EditmeView
+      component: EditmeView,
+      meta: { requiresAuth: true }
     }
   ]
 });
+
+router.beforeEach((to, from, next) => {
+  const userStore = useUserStore();
+  const loginModalStore = useLoginModalStore();
+
+  if (to.matched.some(record => record.meta.requiresAuth)) {
+    if (!userStore.isLoggedIn) {
+      loginModalStore.openModal();
+      next(false);
+    } else {
+      next();
+    }
+  } else {
+    next();
+  }
+});
+
 
 export default router;

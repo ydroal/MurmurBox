@@ -12,18 +12,15 @@ onMounted(() => {
   getRedirectResult(auth)
     .then(async result => {
       if (result) {
-        console.log('Redirect result:', result);
-
         try {
           // result.userからIDトークンを取得
           const googleIdToken = await result.user.getIdToken();
-          console.log(googleIdToken);
 
           // バックエンドにIDトークンを送信
           const res = await axiosInstance.post('/auth/google/validate', {
             token: googleIdToken
           });
-
+          console.log('レスポンスjwt', res.data.jwt);
           const userStore = useUserStore();
           userStore.user = res.data.user; // ユーザー情報を保存
           localStorage.setItem('jwt', res.data.jwt); // JWTトークンを保存
