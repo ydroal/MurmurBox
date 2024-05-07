@@ -34,6 +34,7 @@ class User {
   // Firestore用にデータをシリアライズ
   toJson() {
     return {
+      uid: this.uid,
       email: this.email,
       username: this.username,
       profileImageUrl: this.profileImageUrl,

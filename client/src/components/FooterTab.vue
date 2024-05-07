@@ -1,8 +1,23 @@
 <script setup>
 import { useRouter } from 'vue-router';
-// Routerのインスタンスをインポートして、現在のルートを取得
+import { computed, ref } from 'vue';
+import { useUserStore } from '@/stores/user';
 
 const router = useRouter();
+const userStore = useUserStore();
+const isUserLoggedIn = computed(() => userStore.isLoggedIn);
+
+// ツールチップの表示状態を管理
+const showTooltip = ref(false);
+
+const handleAccountClick = event => {
+  if (!isUserLoggedIn.value) {
+    showTooltip.value = true;
+    setTimeout(() => (showTooltip.value = false), 3000);
+  } else {
+    router.push('/account');
+  }
+};
 </script>
 
 <template>
@@ -32,8 +47,13 @@ const router = useRouter();
         </div>
         <span class="text-xs">Home</span>
       </router-link>
-      <router-link to="/account" class="tab" :class="{ active: $route.path === '/account' }">
-        <div class="icon-container">
+      <router-link
+        :to="isUserLoggedIn.value ? '/account' : '#'"
+        class="tab"
+        :class="{ active: $route.path === '/account' }"
+        @click="handleAccountClick"
+      >
+        <div class="relative icon-container">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="32"
@@ -51,6 +71,10 @@ const router = useRouter();
               fill="currentColor"
             />
           </svg>
+          <!-- ツールチップ -->
+          <div v-show="showTooltip" class="absolute bottom-14">
+            <span class="tooltip font-semibold text-dark">ログインが必要です</span>
+          </div>
         </div>
         <span class="text-xs">Account</span>
       </router-link>
@@ -98,7 +122,7 @@ const router = useRouter();
               stroke="currentColor"
               stroke-width="1"
             />
-          <g id="合体_2" data-name="合体 2" fill="none">
+            <g id="合体_2" data-name="合体 2" fill="none">
               <path
                 d="M4,32a4,4,0,0,1-2.28-7.287A3,3,0,0,1,0,22V3A3,3,0,0,1,3,0H24a3,3,0,0,1,3,3V22a3,3,0,0,1-3,3H23v7Z"
                 stroke="none"
@@ -108,7 +132,7 @@ const router = useRouter();
                 stroke="none"
                 fill="currentColor"
               />
-          </g>
+            </g>
             <line
               id="線_6"
               data-name="線 6"
@@ -251,5 +275,31 @@ const router = useRouter();
 
 .tab.active span {
   color: var(--custom-dark);
+}
+
+.tab .tooltip {
+  color: var(--custom-dark) !important;
+  border-radius: 5px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--custom-dark);
+  padding: 8px 6px;
+  display: inline-block;
+  position: relative; /* 基準値とする */
+  white-space: nowrap;
+}
+
+.tab .tooltip::after {
+  content: ''; /* 疑似要素に必須 */
+  position: absolute; /* 相対位置に指定 */
+  bottom: 0; /* 下から0pxの位置に指定。 */
+  left: 50%; /* 左から50%の位置に指定 */
+  width: 10px; /* 四角形の横幅を指定 */
+  height: 10px; /* 四角形の高さを指定 */
+  background: #fff; /* 背景色を指定 */
+  border-right: 1px solid var(--custom-dark); /* 右側にborder */
+  border-bottom: 1px solid var(--custom-dark); /* 下側にborder */
+  transform: translate(-50%, 55%) rotate(45deg); /* 表示位置を左方向に半分戻し、下方向に移動。かつ45度時計回りに回転 */
+  transform-origin: center center; /* 回転の基準位置を中心に指定 */
 }
 </style>

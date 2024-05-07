@@ -1,47 +1,28 @@
 <script setup>
-// import axiosInstance from '@/axios';
-import { ref, computed, onMounted, watch } from 'vue';
-// import { useUserStore } from '@/stores/user';
-import UserIcon from '@/assets/icons/icon_user.svg';
+import axiosInstance from '@/axios';
+import { ref, onMounted, watch } from 'vue';
+import { useUserStore } from '@/stores/user';
+import UserIcon from '@/assets/icons/icon_user.png';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-// const api = import.meta.env.VITE_APP_API_ENDPOINT;
-// const userStore = useUserStore();
-// const userId = computed(() => userStore.getUser ? userStore.getUser.id : null);
+const userStore = useUserStore();
 
-let userInfo = ref({ username: '', email: '', profile_picture_url: '' });
-let initialUserInfo = ref({ username: '', email: '', profile_picture_url: '' });
+let userInfo = ref({ username: '', email: '', profileImageUrl: '' });
+let initialUserInfo = ref({ username: '', email: '', profileImageUrl: '' });
 let editMode = ref(false); // 編集モードを管理するためのref
 let selectedFile = ref(null); // 選択された画像ファイルを保持するための変数
 let previewImageUrl = ref(null);
 
-onMounted(async () => {
-  console.log('userStore.getUser: ', userStore.getUser);
-  if (userStore.getUser) {
-    console.log('userStore.getUser.id: ', userStore.getUser.id);
-  }
-  try {
-    console.log('userId: ', userId.value);
-    const response = await axiosInstance.get(`${api}user/${userId.value}`);
-    userInfo.value = response.data[0];
-    initialUserInfo.value = { ...response.data[0] }; // ユーザー情報を初期状態として保存。要深いコピー
-
-    if (userInfo.value.profile_picture_url) {
-      const s3_bucket_name = import.meta.env.VITE_APP_BUCKET_NAME;
-      const s3_region = import.meta.env.VITE_APP_S3_REGION;
-      const obj_key = `${import.meta.env.VITE_APP_S3_OBJ_ICONS}/${userInfo.value.profile_picture_url}`;
-      userInfo.value.profile_picture_url = `https://${s3_bucket_name}.s3.${s3_region}.amazonaws.com/${obj_key}`;
-    }
-    console.log('Received full user data: ', response.data);
-  } catch (error) {
-    userInfo.value = { username: '', email: '', profile_picture_url: '' }; // ユーザー情報が取得できなかった場合にはnullを設定
-    initialUserInfo.value = { username: '', email: '', profile_picture_url: '' }; // 初期状態も同様に設定
-    console.error(error);
+onMounted(() => {
+  if (userStore.user) {
+    userInfo.value = { ...userStore.user };
+    initialUserInfo.value = { ...userStore.user };
   }
 });
 
 // 選択された画像のプレビューを表示
-const onFileChange = e => {
-  selectedFile.value = e.target.files[0];
+const onFileChange = event => {
+  selectedFile.value = event.target.files[0];
   previewImageUrl.value = URL.createObjectURL(selectedFile.value); //オブジェクトURLを作成
 };
 
@@ -57,31 +38,41 @@ const edit = () => {
 };
 
 const update = async () => {
-  editMode.value = false;
+  const updates = {};
   if (userInfo.value.username !== initialUserInfo.value.username) {
-    // axiosのPUTは第二引数に渡すデータはオブジェクト形式
-    await axiosInstance.put(`${api}user/${userId.value}`, {
-      username: userInfo.value.username
-    });
+    updates.username = userInfo.value.username;
   }
-  // 選択された画像ファイルがあればサーバーに送信する
   if (selectedFile.value) {
-    let updateFileUrl = `${userId.value}-${Date.now()}-${selectedFile.value.name}`;
-    console.log(updateFileUrl);
-    const formData = new FormData();
-    formData.append('icon', selectedFile.value);
-    formData.append('profile_picture_url', updateFileUrl);
-    const response = await axiosInstance.put(`${api}user/${userId.value}/icon`, formData, {
-      headers: {
-        // 画像をポストする場合の通信形式は multipart/form-data
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-    // レスポンスから新しい画像のURLを取得して、userInfoのデータを更新する
-    userInfo.value.profile_picture_url = response.data.updated_profile_picture_url;
+    const storage = getStorage();
+    const fileName = `${userStore.user.uid}_${Date.now()}`;
+    const fileRef = storageRef(storage, `profile_images/${userStore.user.uid}/${fileName}`);
+    try {
+      await uploadBytes(fileRef, selectedFile.value);
+      const newProfileUrl = await getDownloadURL(fileRef);
+      updates.profileImageUrl = newProfileUrl;
+      userInfo.value.profileImageUrl = newProfileUrl;
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Failed to upload image. Please try again.');
+      return; // 画像のアップロードに失敗した場合はここで処理を中断
+    }
   }
-  // ユーザー情報の更新後、初期状態を再設定する
-  initialUserInfo.value = { ...userInfo.value };
+  if (Object.keys(updates).length > 0) {
+    try {
+      const res = await axiosInstance.put('/user/update', updates);
+      if (res.status === 200) {
+        userStore.user = res.data.user;
+        initialUserInfo.value = { ...userInfo.value };
+        editMode.value = false; // 編集モードを解除
+      } else {
+        console.error('Failed to update user data');
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+      alert('Error updating profile. Please check your connection and try again.');
+    }
+  }
+  editMode.value = false;
 };
 
 // editModeの値が変わったときにファイル選択を有効/無効にする
@@ -103,16 +94,12 @@ watch(editMode, newValue => {
       <div class="bg-white rounded-full w-28 h-28 absolute -top-14 truncate">
         <input id="file-input" type="file" @change="onFileChange" :disabled="!editMode" class="hidden" />
         <div v-if="editMode && selectedFile">
-          <img :src="previewImageUrl || userInfo.profile_picture_url || UserIcon" alt="Preview" class="preview-icon" />
+          <img :src="previewImageUrl || userInfo.profileImageUrl || UserIcon" alt="Preview" class="object-contain" />
         </div>
 
         <!-- <label for="file-input"> -->
         <label for="file-input" v-if="!selectedFile || !editMode">
-          <img
-            :src="userInfo.profile_picture_url || UserIcon"
-            alt="UserIcon"
-            class="absolute top-1/2 left-1/2 w-7/12 transform -translate-x-1/2 -translate-y-1/2"
-          />
+          <img :src="userInfo.profileImageUrl || UserIcon" alt="UserIcon" class="object-contain" />
         </label>
       </div>
 
