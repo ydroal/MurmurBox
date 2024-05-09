@@ -8,7 +8,9 @@ const verifyJwtToken = (req, res, next) => {
   const token = authHeader && authHeader.split(' ')[1]; // Bearerトークンの形式に対応
 
   if (!token) {
-    return res.status(403).send({ message: 'No token provided!' });
+    // ゲストユーザーの場合はユーザー情報を設定せずに処理を続行
+    return next();
+    // return res.status(403).send({ message: 'No token provided!' });
   }
   jwt.verify(token, secretKey, (err, user) => { // secretKeyは実際のJWT秘密鍵
     if (err) {

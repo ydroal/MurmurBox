@@ -5,9 +5,15 @@ import { createPinia } from 'pinia';
 
 import App from './App.vue';
 import router from './router';
+import { useUserStore } from './stores/user';
 
 const app = createApp(App);
-app.use(createPinia());
+const pinia = createPinia();
+app.use(pinia);
 app.use(router);
 
-app.mount('#app');
+app.mount('#app').then(() => {
+  // アプリケーションがマウントされた後にユーザーストアのチェックアクションを呼び出す
+  const userStore = useUserStore();
+  userStore.checkUserFromToken();
+});

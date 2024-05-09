@@ -1,10 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const deepl = require('deepl-node');
 const verifyGoogleToken = require('./verifyGoogleToken'); 
 const verifyJwtToken = require('./verifyJwtToken'); 
 const { db } = require('./firebaseAdmin');
 const User = require('./models/user');
+const Post = require('./models/post');
+
+const authKey = process.env.DEEPL_API_KEY;
+const translator = new deepl.Translator(authKey);
 
 // `/api`のトップレベルエンドポイント
 router.get('/', (req, res) => {
@@ -73,6 +78,10 @@ router.put('/user/update', verifyJwtToken, async (req, res) => {
     // JWT からユーザー ID を取得
     const userId = req.user.id; // verifyJwtToken ミドルウェアにより req.user がセットされている
 
+    if (!userId) {
+      return res.status(403).send({ message: 'Access forbidden for guest users' });
+    }
+
     // Firestore からユーザーデータを取得
     const userDoc = await db.collection('users').doc(userId).get();
 
@@ -104,6 +113,67 @@ router.put('/user/update', verifyJwtToken, async (req, res) => {
   }
 });
 
+// ユーザー情報を取得するエンドポイント
+router.get('/user/info', verifyJwtToken, async (req, res) => {
+  console.log('fetchリクエスト来た')
+  // verifyJwtTokenでreq.userがセットされているが、ゲストの場合は undefined
+  if (!req.user || !req.user.id) {
+    return res.status(403).send({ message: 'Access forbidden for guest users' });
+  }
+
+  try {
+    const userId = req.user.id;
+    const userDoc = await db.collection('users').doc(userId).get();
+
+    if (!userDoc.exists) {
+      return res.status(404).send({ message: 'User not found' });
+    }
+
+    const user = User.fromFirestore(userDoc);
+    res.status(200).json({ user: user.toJson() });
+  } catch (error) {
+    console.error('Error fetching user info:', error);
+    res.status(500).send({ error: 'Server error' });
+  }
+});
+
+// 日記投稿エンドポイント
+router.post('/post', verifyJwtToken, async (req, res) => {
+  try {
+    const { jpText, frText, privacyLevel, revisionRequested } = req.body;
+
+    console.log('User:', req.user);
+
+    // テキストを翻訳する
+    const result = await translator.translateText(jpText, 'ja', 'fr', { split_sentences: 'nonewlines' });
+    const aiText = result.text;
+
+    // ユーザーがログインしていない、且つprivacyLevelが'private'の場合はDB登録をスキップ
+    if (!req.user && privacyLevel === true) {
+      return res.status(200).json({ frText, aiText });
+    }
+     // DB登録処理を行う
+    const newPost = new Post({
+      uid: req.user ? req.user.id : 'guest',
+      jpText,
+      frText,
+      aiText,
+      createdAt: new Date(),
+      privacyLevel,
+      revisionRequested,
+      comments: [], 
+      revisions: []
+    });
+    await newPost.save();
+
+    console.log('Post saved successfully');
+    res.status(200).json({ message: 'Post saved successfully', frText, aiText });
+   
+} catch (error) {
+    console.error('日記の翻訳中にエラーが発生しました:', error);
+    res.status(500).json({ error: '日記の翻訳中にエラーが発生しました' });
+}
+});
 
 module.exports = router;
 
