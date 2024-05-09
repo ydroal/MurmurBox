@@ -14,21 +14,21 @@ export const useUserStore = defineStore({
     getUser: state => state.user
   },
   actions: {
-    isJwtTokenExists() {
-      return !!localStorage.getItem('jwt');
-    },
-    async fetchUser() {
-      if (this.isJwtTokenExists()) {
+    async checkUserFromToken() {
+      const token = localStorage.getItem('jwt');
+      if (token) {
         try {
-          const res = await axiosInstance.get('/auth/user'); // URI後で確認
-          this.user = res.data;
-          console.log('Received user data: ', res.data);
+          const res = await axiosInstance.get('/api/user/info', {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+          this.user = res.data.user;
         } catch (error) {
-          this.user = null; // ユーザー情報が取得できなかった場合にはnullを設定
-          console.error(error);
+          console.error('Failed to fetch user info:', error);
+          this.user = null;
+          localStorage.removeItem('jwt');
         }
-      } else {
-        console.log('JWTトークンが存在しないため、fetchUserは実行されません');
       }
     },
     logout() {

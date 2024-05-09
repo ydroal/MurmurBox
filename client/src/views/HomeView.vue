@@ -1,11 +1,14 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { auth } from '@/firebase';
 import { getRedirectResult } from 'firebase/auth';
 import axiosInstance from '@/axios';
 import { useLoginModalStore } from '@/stores/loginModal';
 import LoginModal from '@/components/LoginModal.vue';
 import { useUserStore } from '@/stores/user';
+
+const userStore = useUserStore();
+const isUserLoggedIn = computed(() => userStore.isLoggedIn);
 
 // マウント時にリダイレクト結果を取得
 onMounted(() => {
@@ -21,7 +24,7 @@ onMounted(() => {
             token: googleIdToken
           });
           console.log('レスポンスjwt', res.data.jwt);
-          const userStore = useUserStore();
+          // const userStore = useUserStore();
           userStore.user = res.data.user; // ユーザー情報を保存
           localStorage.setItem('jwt', res.data.jwt); // JWTトークンを保存
         } catch (error) {
@@ -40,6 +43,9 @@ const jpText = ref('');
 const frText = ref('');
 const aiText = ref('');
 const isPosted = ref(false); // Post前後でUI切り替え
+const privacyLevel = ref(false); // 公開範囲の初期値はpublic
+const revisionRequested = ref(false); // 添削リクエストの初期値
+const showTooltip = ref(false);
 
 const validateJpInput = () => {
   // 日本語の文字範囲を含む正規表現
@@ -53,26 +59,29 @@ const validateJpInput = () => {
 // Postボタンのクリックアクション
 const postDiary = async () => {
   try {
-    const res = await axiosInstance.post(
-      '/api/diary', // APIに翻訳依頼を投げる。バックエンドでDBへの保存を行う
-      {
-        jpText: jpText.value,
-        frText: frText.value
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${yourAuthToken}`
-        }
-      }
-    );
+    const res = await axiosInstance.post('/post', {
+      jpText: jpText.value,
+      frText: frText.value,
+      privacyLevel: privacyLevel.value,
+      revisionRequested: revisionRequested.value
+    });
     console.log('Diary data posted:', res.data);
-    // レスポンスから直接テキストデータを更新
     frText.value = res.data.frText;
     aiText.value = res.data.aiText;
     isPosted.value = true;
   } catch (error) {
     console.error('Error posting diary data:', error);
   }
+};
+
+const handleMouseOver = () => {
+  if (!isUserLoggedIn.value) {
+    showTooltip.value = true;
+  }
+};
+
+const handleMouseLeave = () => {
+  showTooltip.value = false;
 };
 </script>
 
@@ -117,6 +126,7 @@ const postDiary = async () => {
             <span class="text-sm font-fr">FR</span>
           </div>
           <textarea
+            v-model="frText"
             maxlength="1500"
             type="text"
             pattern="^[a-zA-Z0-9]+$"
@@ -141,6 +151,7 @@ const postDiary = async () => {
     <!-- 日記入力欄下のチェックボタン -->
     <div class="w-full relative" v-if="!isPosted">
       <button
+        @click="postDiary"
         class="absolute left-1/2 top-0 transform -translate-x-1/2 bg-orange text-ivory font-en w-16 h-10 rounded-xl hover:bg-orange-700"
       >
         Post
@@ -149,8 +160,8 @@ const postDiary = async () => {
         <div class="flex flex-col -mt-[0.2rem]">
           <p class="font-jp text-dark text-sm font-semibold mb-0.5">公開範囲</p>
           <fieldset class="checkbox flex flex-col items-start">
-            <label for="visibility-checkbox" class="ml-0 text-sm font-jp text-dark">
-              <input id="visibility-checkbox" type="checkbox" value="" />
+            <label for="privacy-checkbox" class="ml-0 text-sm font-jp text-dark">
+              <input id="privacy-checkbox" type="checkbox" value="" v-model="privacyLevel" />
               Private
             </label>
           </fieldset>
@@ -162,10 +173,29 @@ const postDiary = async () => {
               <input id="auto-correction-checkbox" type="checkbox" value="" checked disabled />
               自動添削（固定）
             </label>
-            <label for="user-correction-checkbox" class="ml-0 text-sm font-jp text-dark">
-              <input id="user-correction-checkbox" type="checkbox" value="" />
+            <label
+              for="user-correction-checkbox"
+              class="ml-0 text-sm font-jp text-dark"
+              @mouseover="handleMouseOver"
+              @mouseleave="handleMouseLeave"
+            >
+              <input
+                id="user-correction-checkbox"
+                type="checkbox"
+                value=""
+                v-model="revisionRequested"
+                :disabled="!isUserLoggedIn"
+              />
               ユーザー添削
             </label>
+            <!-- ツールチップ -->
+            <div v-show="showTooltip" class="absolute bottom-8 right-1 text-left">
+              <span class="tooltip text-white text-xs font-semibold text-left">
+                ユーザー添削にはログインが必要です。
+                <br />
+                ログインして他ユーザーのフィードバックをもらいましょう！
+              </span>
+            </div>
           </fieldset>
         </div>
       </div>
@@ -219,5 +249,32 @@ const postDiary = async () => {
 
 .checkbox input {
   display: none;
+}
+
+.tooltip {
+  color: var(--custom-dark) !important;
+  text-align: left !important;
+  border-radius: 6px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--custom-dark);
+  padding: 8px 6px;
+  display: inline-block;
+  position: relative; /* 基準値とする */
+  white-space: nowrap;
+}
+
+.tooltip::after {
+  content: ''; /* 疑似要素に必須 */
+  position: absolute; /* 相対位置に指定 */
+  bottom: 0; /* 下から0pxの位置に指定。 */
+  left: 63.5%; /* 左から50%の位置に指定 */
+  width: 10px; /* 四角形の横幅を指定 */
+  height: 10px; /* 四角形の高さを指定 */
+  background: #fff; /* 背景色を指定 */
+  border-right: 1px solid var(--custom-dark); /* 右側にborder */
+  border-bottom: 1px solid var(--custom-dark); /* 下側にborder */
+  transform: translate(-50%, 55%) rotate(45deg); /* 表示位置を左方向に半分戻し、下方向に移動。かつ45度時計回りに回転 */
+  transform-origin: center center; /* 回転の基準位置を中心に指定 */
 }
 </style>
