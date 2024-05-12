@@ -18,7 +18,7 @@ export const useUserStore = defineStore({
       const token = localStorage.getItem('jwt');
       if (token) {
         try {
-          const res = await axiosInstance.get('/api/user/info', {
+          const res = await axiosInstance.get('/user/info', {
             headers: {
               Authorization: `Bearer ${token}`
             }

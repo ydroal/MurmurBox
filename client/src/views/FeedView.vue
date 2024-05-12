@@ -1,280 +1,351 @@
 <script setup>
-// import { useStore } from 'vuex';
-import { ref, computed } from 'vue';
-// import { compareAsc, format } from "date-fns";
+import { ref, onMounted, computed } from 'vue';
+import { usePostsStore } from '@/stores/posts';
+// import { useUserStore } from '@/stores/user';
+import axiosInstance from '@/axios';
+import PopupForm from '@/components/PopupForm.vue';
+import UserIcon from '@/assets/icons/icon_user.png';
 
-// const store = useStore();
-// const posts = computed(() => store.state.posts);
-
-const displayComments = ref(true);
+const postsStore = usePostsStore();
+const posts = computed(() => postsStore.allPosts);
+// const userStore = useUserStore();
+// const loginUser = computed(() => userStore.getUser);
+const displayComments = ref(false);
 const displayCorrections = ref(false);
-const isCommentPopupVisible = ref(true);
-const newComment = ref('');
+const comments = ref([]);
+const corrections = ref([]);
+const isPopupVisible = ref(false);
+const currentMode = ref(null); // 'comment' または 'correction'
+const currentInputText = ref('');
+const selectedPostId = ref(null);
 
-// const fetchPosts = async () => {
+// マウント時にpostsデータを取得
+onMounted(async () => {
+  await postsStore.fetchPostsWithDetail();
+});
+
+const formatDate = dateStr => {
+  const date = new Date(dateStr);
+
+  // 各部分のゼロ埋め
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+
+  // カスタムフォーマットの組み立て
+  return `${year}/${month}/${day} ${hours}:${minutes}`;
+};
+
+const timeSince = date => {
+  const seconds = Math.floor((new Date() - date) / 1000);
+  let interval = seconds / 31536000;
+
+  if (interval > 1) {
+    return date.toLocaleDateString();
+  }
+  interval = seconds / 2592000;
+  if (interval > 1) {
+    return Math.floor(interval) + ' months ago';
+  }
+  interval = seconds / 86400;
+  if (interval > 1) {
+    return Math.floor(interval) + 'd';
+  }
+  interval = seconds / 3600;
+  if (interval > 1) {
+    return Math.floor(interval) + 'h';
+  }
+  interval = seconds / 60;
+  if (interval > 1) {
+    return Math.floor(interval) + 'm';
+  }
+  return Math.floor(seconds) + ' seconds ago';
+};
+
+const fetchCommentsForPost = async postId => {
+  try {
+    const res = await axiosInstance.get(`/comments/${postId}`);
+    console.log('コメント:', res.data.comments);
+    comments.value = res.data.comments;
+  } catch (error) {
+    console.error(`Failed to fetch comments ${postId}:`, error);
+    comments.value = [];
+  }
+};
+
+const fetchCorrectionsForPost = async postId => {
+  try {
+    console.log('添削をフェッチするよ');
+    const res = await axiosInstance.get(`/corrections/${postId}`);
+    console.log('添削:', res.data.corrections);
+    corrections.value = res.data.corrections;
+  } catch (error) {
+    console.error(`Failed to fetch corrections ${postId}:`, error);
+    corrections.value = [];
+  }
+};
+
+// Updateしたポストだけを更新
+const updateSpecificPostDetails = async postId => {
+  try {
+    const res = await axiosInstance.get(`/post-details/${postId}`);
+    const updatedPostDetails = res.data;
+
+    const index = postsStore.allPosts.findIndex(post => post.postId === postId);
+    if (index !== -1) {
+      postsStore.allPosts[index] = updatedPostDetails;
+    }
+  } catch (error) {
+    console.error(`Failed to update post details for ${postId}:`, error);
+  }
+};
+
+// 追加されたコメントのポストIDを引数として受け取り、そのポストだけを再フェッチ
+// const updateSpecificPost = async (postId, updates) => {
 //   try {
-//     await store.dispatch('fetchPosts');
+//     const res = await axiosInstance.put('/update-post-details', { postId, updates });
+//     const updatedPost = res.data.updatedPost;
+
+//     const index = postsStore.allPosts.findIndex(post => post.postId === postId);
+//     if (index !== -1) {
+//       postsStore.allPosts[index] = updatedPost;
+//     }
 //   } catch (error) {
-//     console.error('Failed to fetch posts:', error);
+//     console.error(`Failed to fetch ${postId}:`, error);
 //   }
-// }
-
-// const timestamp = ref(new Date()) // 仮のTimestamp
-// const postDate = computed(() => {
-//   const date = timestamp.value; // refから.valueでアクセス
-//   return format(date, "yyyy/MM/dd HH:mm");
-// });
-
-const toggleComments = () => {
-  displayComments.value = !displayComments.value;
-  isCommentPopupVisible.value = !isCommentPopupVisible.value;
-};
-
-const submitComment = async () => {
-  // コメント送信のロジック
-  console.log(newComment.value);
-  newComment.value = ''; // テキストエリアをクリア
-  isCommentPopupVisible.value = false;
-  displayComments.value = true;
-};
-
-// const toggleCorrections = () => {
-//   displayCorrections.value = !displayCorrections.value;
 // };
 
-// onMounted(() => {
-//   fetchPosts();
-// });
+const togglePopup = async (postId, mode, count) => {
+  console.log(`postId:`, postId);
+  console.log(`selectedPostId:`, selectedPostId.value);
+  if (selectedPostId.value === postId && currentMode.value === mode) {
+    console.log('Closing popup for the same post and mode.');
+    if (mode === 'comment') {
+      isPopupVisible.value = !displayComments.value;
+      displayComments.value = !displayComments.value;
+    } else {
+      isPopupVisible.value = !displayCorrections.value;
+      displayCorrections.value = !displayCorrections.value;
+    }
+  } else {
+    console.log('Opening popup for a new post or mode.');
+    currentMode.value = mode;
+    selectedPostId.value = postId;
+    isPopupVisible.value = true;
+    if (mode === 'comment') {
+      displayComments.value = true;
+      displayCorrections.value = false;
+      if (count > 0) {
+        await fetchCommentsForPost(postId);
+      }
+    } else {
+      displayCorrections.value = true;
+      displayComments.value = false;
+      if (count > 0) {
+        await fetchCorrectionsForPost(postId);
+      }
+    }
+  }
+};
+
+const sendComment = async (postId, content) => {
+  try {
+    await axiosInstance.post('/comments', { postId, content });
+    await updateSpecificPostDetails(postId);
+  } catch (error) {
+    console.error('Error sending comment:', error);
+  }
+};
+
+const sendCorrection = async (postId, content) => {
+  try {
+    await axiosInstance.post('/corrections', { postId, content });
+    await updateSpecificPostDetails(postId);
+  } catch (error) {
+    console.error('Error sending correction:', error);
+  }
+};
+
+const handleSubmit = async text => {
+  if (currentMode.value === 'comment') {
+    await sendComment(selectedPostId.value, text);
+    // コメントリストを更新
+    fetchCommentsForPost(selectedPostId.value);
+    displayComments.value = true; // コメント表示を維持
+  } else {
+    await sendCorrection(selectedPostId.value, text);
+    // 添削リストを更新
+    fetchCorrectionsForPost(selectedPostId.value);
+    displayCorrections.value = true; // 添削表示を維持
+  }
+  isPopupVisible.value = false; // ポップアップを閉じる
+};
+
+const closePopup = () => {
+  isPopupVisible.value = false;
+};
 </script>
 
 <template>
   <div class="pt-24 px-5">
     <h2 class="font-jp text-dark text-base font-thin text-center mb-1">みんなの日記</h2>
     <p class="font-jp text-dark text-xs text-center mb-12">コメントや日記の添削をしよう。</p>
-    <!-- <div v-for="post in posts" :key="post.id" class="w-full mb-4"> -->
-    <div class="flex items-center">
-      <div class="flex justify-start items-center space-x-1.5 mb-2 pl-1">
-        <!-- <img :src="post.userIcon" alt="User Icon" class="w-11 h-11 rounded-full object-cover" alt="Avatar"> -->
-        <img src="@/assets/images/icon_user1.jpeg" class="w-11 h-11 rounded-full object-cover" alt="Avatar" />
-        <!-- <span>{{ post.username }}</span> -->
-        <span class="text-dark font-bold">Yoko</span>
-      </div>
-      <span class="text-dark text-sm font-en ml-auto pr-2">2024/04/22 18:28</span>
-      <!-- {{ postDate }} -->
-    </div>
 
-    <div class="w-full">
-      <div class="flex gap-0">
-        <!-- 日本語部分 -->
-        <div class="relative w-full">
-          <div class="absolute top-3 left-3 flex justify-center items-center w-9 h-9 bg-ivory rounded-full">
-            <span class="text-sm font-fr">JP</span>
-          </div>
-          <div
-            class="read-more border-r border-ivory50 flex-1 container mx-auto p-3 pt-14 rounded-l-3xl h-72 leading-6 font-jp bg-dark text-ivory text-sm"
-          >
-            <!-- {{ post.jpText }} -->
-            <div id="scrollbar">
-              ああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああ
+    <!-- 日記の表示 -->
+    <div v-for="post in posts" :key="post.id" class="w-full mb-4">
+      <div class="flex items-center">
+        <div class="flex justify-start items-center space-x-1.5 mb-2 pl-1">
+          <img
+            :src="post.profileImageUrl || '@/assets/icons/icon_user.png'"
+            alt="User Icon"
+            class="w-11 h-11 rounded-full object-cover"
+          />
+          <span class="text-dark font-bold">{{ post.username }}</span>
+        </div>
+        <span class="text-dark text-sm font-en ml-auto pr-2">{{ formatDate(post.createdAt) }}</span>
+      </div>
+
+      <div class="w-full">
+        <div class="flex gap-0">
+          <!-- 日本語部分 -->
+          <div class="relative w-full">
+            <div class="absolute top-3 left-3 flex justify-center items-center w-9 h-9 bg-ivory rounded-full">
+              <span class="text-sm font-fr">JP</span>
             </div>
-          </div>
-        </div>
-        <!-- フランス語部分 -->
-        <div class="relative w-full">
-          <div class="absolute top-3 left-3 flex justify-center items-center w-9 h-9 bg-ivory rounded-full">
-            <span class="text-sm font-fr">FR</span>
-          </div>
-          <div
-            class="border-r border-ivory50 flex-1 container mx-auto p-3 pt-14 rounded-r-3xl h-72 leading-6 font-jp bg-dark text-ivory text-sm"
-          >
-            <!-- {{ post.frText }} -->
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- 添削リクエスト -->
-    <div class="flex justify-end items-center mt-3 mr-0.5">
-      <!-- <div
-        :class="{ 'revision-request-true': post.revisionRequested, 'revision-request-false': !post.revisionRequested }"
-      ></div> -->
-      <div class="revision-request-true"></div>
-      <span class="ml-[0.5em] text-sm font-jp text-dark">添削リクエスト</span>
-    </div>
-    <!-- 通知バッジ群 -->
-    <div class="flex justify-end mt-1 mr-4 mb-2">
-      <button type="button" class="relative inline-flex items-center p-3" @click="toggleComments">
-        <img src="@/assets/icons/icon_comment.svg" alt="My dico" class="w-5 h-5" aria-hidden="true" />
-        <div
-          class="absolute inline-flex items-center justify-center w-5 h-5 text-[0.6rem] text-dark bg-orange rounded-full top-0 -end-[0.6rem]"
-        >
-          10
-        </div>
-      </button>
-      <button type="button" class="relative inline-flex items-center p-3" @click="toggleCorrections">
-        <img src="@/assets/icons/icon_edited.svg" alt="My dico" class="w-5 h-5" aria-hidden="true" />
-        <div
-          class="absolute inline-flex items-center justify-center w-5 h-5 text-[0.6rem] text-dark bg-orange rounded-full top-0 -end-[0.6rem]"
-        >
-          3
-        </div>
-      </button>
-    </div>
-    <!-- コメントセクション -->
-    <div v-if="displayComments" class="flex flex-col items-center">
-      <p class="font-jp text-dark text-sm font-semibold text-center mb-4">コメント</p>
-      <!-- コメントリスト表示 -->
-      <!-- <div
-        v-for="comment in comments"
-        :key="comment.id"
-        class="flex justify-between w-1/2 py-6 px-4 mb-8 bg-white/35 rounded-3xl"
-      > -->
-      <!-- <div class="flex items-center space-x-4"> -->
-      <!-- ユーザーアイコン -->
-      <!-- <img :src="comment.userIcon" class="w-11 h-11 rounded-full object-cover" :alt="comment.username" /> -->
-      <!-- コメント内容 -->
-      <!-- <div class="flex flex-col space-y-1">
-            <span class="font-bold text-dark">{{ comment.username }}</span>
-            <span class="text-sm text-dark">{{ comment.text }}</span>
-          </div>
-        </div>
-      </div> -->
-      <div class="flex justify-between w-1/2 py-6 px-4 mb-8 bg-white/35 rounded-3xl">
-        <div class="flex items-center space-x-4">
-          <img
-            src="https://flowbite.com/docs/images/people/profile-picture-2.jpg"
-            class="w-11 h-11 rounded-full object-cover"
-            alt="user icon"
-          />
-          <div class="flex flex-col space-y-1">
-            <span class="font-bold text-dark">Hide</span>
-            <span class="text-sm text-dark">
-              Lorem ipsum dolor sit amet consectetur adipisicing elit. Deleniti, provident
-            </span>
-          </div>
-        </div>
-        <div class="flex-none px-4 py-2 text-stone-600 text-xs md:text-sm">50m ago</div>
-      </div>
-      <div class="flex justify-between w-1/2 py-6 px-4 mb-8 bg-white/35 rounded-3xl">
-        <div class="flex items-center space-x-4">
-          <img
-            src="https://flowbite.com/docs/images/people/profile-picture-2.jpg"
-            class="w-11 h-11 rounded-full object-cover"
-            alt="user icon"
-          />
-          <div class="flex flex-col space-y-1">
-            <span class="font-bold text-dark">Issey</span>
-            <span class="text-sm text-dark">
-              Lorem ipsum dolor sit amet consectetur adipisicing elit. Deleniti, providentLorem ipsum dolor sit amet
-              consectetur adipisicing elit. Deleniti, provident
-            </span>
-          </div>
-        </div>
-        <div class="flex-none px-4 py-2 text-stone-600 text-xs md:text-sm">50m ago</div>
-      </div>
-    </div>
-
-    <!-- コメントポップアップ -->
-    <div v-if="isCommentPopupVisible" class="comment-popup">
-      <div
-        tabindex="-1"
-        :class="{'hidden': !isPopupVisible}"
-        class="overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 w-full md:inset-0 h-modal md:h-full"
-      >
-        <div class="p-4 w-full max-w-lg h-full md:h-auto">
-          <div class="relative p-4 bg-white rounded-lg shadow dark:bg-gray-800 md:p-8">
-            <button
-              class="absolute -top-[0.6rem] -right-[0.8rem] w-7 h-7 rounded-full bg-[#313539] text-[#f4f2f0] text-lg font-thin leading-7 text-center border-none cursor-pointer"
-              @click="closeModal"
+            <div
+              class="read-more border-r border-ivory50 flex-1 container mx-auto p-3 pt-14 rounded-l-3xl h-72 leading-6 font-jp bg-dark text-ivory text-sm"
             >
-              &#10005;
-            </button>
-            <div class="mb-4 text-sm font-light text-gray-500 dark:text-gray-400">
-              <h3 class="mb-3 text-2xl text-center font-bold text-gray-900 dark:text-white">Add Comment</h3>
-              <textarea
-                v-model="newComment"
-                placeholder="コメントを入力してください"
-                maxlength="800"
-                class="flex justify-between w-full h-28 py-5 px-4 mb-8 text-sm text-dark border border-dark bg-white/35 rounded-3xl"
-              ></textarea>
+              <div id="scrollbar">
+                {{ post.jpText }}
+              </div>
             </div>
-            <div class="flex self-end">
-              <button class="ml-auto bg-orange text-ivory font-en w-16 h-10 rounded-xl hover:bg-orange-700">
-                Post
-              </button>
+          </div>
+          <!-- フランス語部分 -->
+          <div class="relative w-full">
+            <div class="absolute top-3 left-3 flex justify-center items-center w-9 h-9 bg-ivory rounded-full">
+              <span class="text-sm font-fr">FR</span>
+            </div>
+            <div
+              class="border-r border-ivory50 flex-1 container mx-auto p-3 pt-14 rounded-r-3xl h-72 leading-6 font-jp bg-dark text-ivory text-sm"
+            >
+              <div id="scrollbar">
+                {{ post.frText }}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-    <!-- 2コメ -->
-    <div class="flex items-center">
-      <div class="flex justify-start items-center space-x-1.5 mb-2 pl-1">
-        <!-- <img :src="post.userIcon" alt="User Icon" class="w-32 rounded-full" alt="Avatar"> -->
-        <img src="@/assets/images/icon_user1.jpeg" class="w-11 h-11 rounded-full object-cover" alt="Avatar" />
-        <!-- <span>{{ post.username }}</span> -->
-        <span class="text-dark text-sm font-en">Yoko</span>
+      <!-- 添削リクエスト -->
+      <div class="flex justify-end items-center mt-3 mr-0.5">
+        <div
+          :class="{
+            'revision-request-true': post.revisionRequested,
+            'revision-request-false': !post.revisionRequested
+          }"
+        ></div>
+        <!-- <div class="revision-request-true"></div> -->
+        <span class="ml-[0.5em] text-sm font-jp text-dark">添削リクエスト</span>
       </div>
-      <span class="text-dark text-sm font-en ml-auto pr-2">2024/04/22 18:28</span>
-      <!-- {{ postDate }} -->
-    </div>
 
-    <div class="w-full">
-      <div class="flex gap-0">
-        <!-- 日本語部分 -->
-        <div class="relative w-full">
-          <div class="absolute top-3 left-3 flex justify-center items-center w-9 h-9 bg-ivory rounded-full">
-            <span class="text-sm font-fr">JP</span>
-          </div>
+      <!-- 通知バッジ群 -->
+      <div class="flex justify-end mt-1 mr-4 mb-2">
+        <button
+          type="button"
+          class="relative inline-flex items-center p-3"
+          @click="togglePopup(post.postId, 'comment', post.commentCount)"
+        >
+          <img src="@/assets/icons/icon_comment.svg" alt="My dico" class="w-5 h-5" aria-hidden="true" />
           <div
-            class="read-more border-r border-ivory50 flex-1 container mx-auto p-3 pt-14 rounded-l-3xl h-72 leading-6 font-jp bg-dark text-ivory text-sm"
+            v-if="post.commentCount > 0"
+            class="absolute inline-flex items-center justify-center w-5 h-5 text-[0.6rem] text-dark bg-orange rounded-full top-0 -end-[0.6rem]"
           >
-            <!-- {{ post.jpText }} -->
-            <div id="scrollbar">
-              ああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああ
+            {{ post.commentCount }}
+          </div>
+        </button>
+        <button
+          type="button"
+          class="relative inline-flex items-center p-3"
+          @click="togglePopup(post.postId, 'correction', post.correctionCount)"
+        >
+          <img src="@/assets/icons/icon_edited.svg" alt="My dico" class="w-5 h-5" aria-hidden="true" />
+          <div
+            v-if="post.correctionCount > 0"
+            class="absolute inline-flex items-center justify-center w-5 h-5 text-[0.6rem] text-dark bg-orange rounded-full top-0 -end-[0.6rem]"
+          >
+            {{ post.correctionCount }}
+          </div>
+        </button>
+      </div>
+
+      <!-- コメントセクション -->
+      <div v-if="displayComments && selectedPostId === post.postId" class="flex flex-col items-center">
+        <p class="font-jp text-dark text-sm font-semibold text-center mb-4">コメント</p>
+        <!-- コメントリスト表示 -->
+        <div
+          v-for="comment in comments"
+          :key="comment.commentId"
+          class="flex justify-between w-1/2 py-6 px-4 mb-8 bg-white/50 rounded-3xl"
+        >
+          <div class="flex items-center space-x-4">
+            <!-- ユーザーアイコン -->
+            <img
+              :src="comment.profileImageUrl || UserIcon"
+              class="w-11 h-11 rounded-full object-cover"
+              :alt="comment.username"
+            />
+            <!-- コメント内容 -->
+            <div class="flex flex-col space-y-1">
+              <span class="font-bold text-dark">{{ comment.username }}</span>
+              <span class="text-sm text-dark">{{ comment.content }}</span>
             </div>
           </div>
-        </div>
-        <!-- フランス語部分 -->
-        <div class="relative w-full">
-          <div class="absolute top-3 left-3 flex justify-center items-center w-9 h-9 bg-ivory rounded-full">
-            <span class="text-sm font-fr">FR</span>
-          </div>
-          <div
-            class="border-r border-ivory50 flex-1 container mx-auto p-3 pt-14 rounded-r-3xl h-72 leading-6 font-jp bg-dark text-ivory text-sm"
-          >
-            <!-- {{ post.frText }} -->
+          <div class="flex-none px-4 py-2 text-stone-600 text-xs md:text-sm">
+            {{ timeSince(new Date(comment.createdAt)) }}
           </div>
         </div>
       </div>
-    </div>
-    <!-- 添削リクエスト -->
-    <div class="flex justify-end items-center mt-3 mr-0.5">
-      <!-- <div
-        :class="{ 'revision-request-true': post.revisionRequested, 'revision-request-false': !post.revisionRequested }"
-      ></div> -->
-      <div class="revision-request-true"></div>
-      <span class="ml-[0.5em] text-sm font-jp text-dark">添削リクエスト</span>
-    </div>
-    <!-- 通知バッジ群 -->
-    <div class="flex justify-end mt-1 mr-4">
-      <button type="button" class="relative inline-flex items-center p-3">
-        <img src="@/assets/icons/icon_comment.svg" alt="My dico" class="w-5 h-5" aria-hidden="true" />
-        <span class="sr-only">Notifications</span>
+
+      <!-- 添削セクション -->
+      <div v-if="displayCorrections && selectedPostId === post.postId" class="flex flex-col items-center">
+        <p class="font-jp text-dark text-sm font-semibold text-center mb-4">添削</p>
+        <!-- 添削リスト表示 -->
         <div
-          class="absolute inline-flex items-center justify-center w-5 h-5 text-[0.6rem] text-dark bg-orange rounded-full top-0 -end-[0.6rem]"
+          v-for="correction in corrections"
+          :key="correction.correctionId"
+          class="flex justify-between w-1/2 py-6 px-4 mb-8 bg-white/50 rounded-3xl"
         >
-          10
+          <div class="flex items-center space-x-4">
+            <!-- ユーザーアイコン -->
+            <img
+              :src="correction.profileImageUrl || UserIcon"
+              class="w-11 h-11 rounded-full object-cover"
+              :alt="correction.username"
+            />
+            <!-- 添削内容 -->
+            <div class="flex flex-col space-y-1">
+              <span class="font-bold text-dark">{{ correction.username }}</span>
+              <span class="text-sm text-dark">{{ correction.content }}</span>
+            </div>
+          </div>
+          <div class="flex-none px-4 py-2 text-stone-600 text-xs md:text-sm">
+            {{ timeSince(new Date(correction.createdAt)) }}
+          </div>
         </div>
-      </button>
-      <button type="button" class="relative inline-flex items-center p-3">
-        <img src="@/assets/icons/icon_edited.svg" alt="My dico" class="w-5 h-5" aria-hidden="true" />
-        <span class="sr-only">Notifications</span>
-        <div
-          class="absolute inline-flex items-center justify-center w-5 h-5 text-[0.6rem] text-dark bg-orange rounded-full top-0 -end-[0.6rem]"
-        >
-          3
-        </div>
-      </button>
+      </div>
+
+      <!-- ポップアップ -->
+      <div v-if="isPopupVisible && selectedPostId === post.postId">
+        <PopupForm
+          :isVisible="isPopupVisible"
+          :title="currentMode === 'comment' ? 'Add Comment' : 'Add Correction'"
+          :placeholder="currentMode === 'comment' ? 'コメントを入力してください' : '添削を入力してください'"
+          :inputText="currentInputText"
+          @close="closePopup"
+          @submit="handleSubmit"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -316,5 +387,4 @@ const submitComment = async () => {
   max-height: 220px;
   overflow: auto; /* スクロールバーを表示 */
 }
-
 </style>
