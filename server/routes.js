@@ -4,9 +4,11 @@ const jwt = require('jsonwebtoken');
 const deepl = require('deepl-node');
 const verifyGoogleToken = require('./verifyGoogleToken'); 
 const verifyJwtToken = require('./verifyJwtToken'); 
-const { db } = require('./firebaseAdmin');
+const { db, admin } = require('./firebaseAdmin');
 const User = require('./models/user');
 const Post = require('./models/post');
+const Comment = require('./models/comment');
+const Correction = require('./models/correction');
 
 const authKey = process.env.DEEPL_API_KEY;
 const translator = new deepl.Translator(authKey);
@@ -175,6 +177,333 @@ router.post('/post', verifyJwtToken, async (req, res) => {
 }
 });
 
-module.exports = router;
+// Postsデータを取得するエンドポイント
+router.get('/posts', verifyJwtToken, async (req, res) => {
+  console.log('Postsのfetchリクエスト来た');
 
- 
+  // verifyJwtTokenでreq.userがセットされているが、ゲストの場合は undefined
+  if (!req.user || !req.user.id) {
+    return res.status(403).send({ message: 'Access forbidden for guest users' });
+  }
+
+  try {
+    const snapshot = await db.collection('posts').get();
+    const posts = [];
+
+    // 取得したデータをPostクラスのインスタンスに変換
+    snapshot.forEach(doc => {
+      const post = Post.fromFirestore(doc);
+      posts.push(post);
+    });
+
+    res.json({ posts: posts.map(post => post.toJson())});
+  } catch (error) {
+    console.error('Postデータの取得中にエラーが発生しました:', error);
+    res.status(500).json({
+      success: false,
+      message: 'サーバーエラーが発生しました。Postデータの取得に失敗しました。',
+    });
+  }
+});
+
+// フィルタリングされたPostデータ（privacyLevel: false）とpostのユーザー情報を取得するエンドポイント
+router.get('/posts-with-details', verifyJwtToken, async (req, res) => {
+  console.log('Feed用Postsのfetchリクエスト来た');
+  console.log('Authenticated user:', req.user);  // ユーザー情報を確認
+
+  if (!req.user || !req.user.id) {
+    return res.status(403).send({ message: 'Access forbidden for guest users' });
+  }
+
+  try {
+    // postsSnapshotは投稿データ全体のスナップショットオブジェクト。各ドキュメントの参照を保持
+    const postsSnapshot = await db.collection('posts')
+      .where('privacyLevel', '==', false)
+      .get(); //getはPromiseを返しawaitで結果をpostsSnapshotに格納
+
+      const postsDetailedInfo = await Promise.all(postsSnapshot.docs.map(async (postDoc) => {
+        const postData = postDoc.data();
+        const userSnapshot = await db.collection('users').doc(postData.uid).get();
+        const user = userSnapshot.data();
+  
+        // コメント数をカウント
+        const commentCountSnapshot = await db.collection('comments').where('postId', '==', postDoc.id).get();
+        const commentCount = commentCountSnapshot.size; // コメント数
+        // 添削数をカウント
+        const correctionCountSnapshot = await db.collection('corrections').where('postId', '==', postDoc.id).get();
+        const correctionCount = correctionCountSnapshot.size; // 添削数
+        console.log('correctionCount:', correctionCount);
+
+        // createdAtをISO 8601形式に変換
+        const createdAt = new Date(postData.createdAt.seconds * 1000).toISOString();
+
+
+        return {
+          ...postData,
+          username: user.username,
+          profileImageUrl: user.profileImageUrl,
+          commentCount,
+          correctionCount,
+          createdAt
+        };
+      }));
+  
+      res.status(200).json({ posts: postsDetailedInfo });
+    } catch (error) {
+    console.error('Error fetching posts with users:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// 指定のpostIdのポストデータを取得するエンドポイント
+router.get('/post-details/:postId', verifyJwtToken, async (req, res) => {
+  console.log('個別Postのfetchリクエスト来た');
+  
+  if (!req.user || !req.user.id) {
+    return res.status(403).send({ message: 'Access forbidden for guest users' });
+  }
+  
+  const postId = req.params.postId;
+  try {
+    const postDoc = await db.collection('posts').doc(postId).get();
+
+    if (!postDoc.exists) {
+      return res.status(404).send({ message: 'Post not found' });
+    }
+
+    const postData = postDoc.data();
+    const userSnapshot = await db.collection('users').doc(postData.uid).get();
+    const user = userSnapshot.data();
+
+    const commentCountSnapshot = await db.collection('comments').where('postId', '==', postId).get();
+    const commentCount = commentCountSnapshot.size;
+
+    const correctionCountSnapshot = await db.collection('corrections').where('postId', '==', postId).get();
+    const correctionCount = correctionCountSnapshot.size;
+
+    const createdAt = new Date(postData.createdAt.seconds * 1000).toISOString();
+
+    res.status(200).json({
+      ...postData,
+      username: user.username,
+      profileImageUrl: user.profileImageUrl,
+      commentCount,
+      correctionCount,
+      createdAt
+    });
+
+  } catch (error) {
+    console.error('Error fetching post details:', error);
+    res.status(500).send({ message: 'Server Error' });
+  }
+});
+
+// ログインユーザーの投稿を取得するAPIエンドポイント
+router.get('/my-posts', verifyJwtToken, async (req, res) => {
+  console.log('Diary用Postsのfetchリクエスト来た');
+
+  if (!req.user || !req.user.id) {
+    return res.status(403).send({ message: 'Access forbidden for guest users' });
+  }
+  
+  try {
+    const uid = req.user.id;
+    const postsSnapshot = await db.collection('posts')
+      .where('uid', '==', uid)
+      .get();
+
+    const posts = postsSnapshot.docs.map(doc => {
+      // PostクラスのfromFirestoreを使用してPostインスタンスを作成し、toJsonを呼び出す
+      const post = Post.fromFirestore(doc);
+      return post.toJson();
+    });
+
+    res.json({ posts });
+  } catch (error) {
+    console.error('Error fetching user posts:', error);
+    res.status(500).json({ message: 'サーバーエラーが発生しました。' });
+  }
+});
+
+// Postデータを更新するAPIエンドポイント
+router.put('/update-post-details', verifyJwtToken, async (req, res) => {
+  console.log('postデータ更新リクエスト来た');
+
+  if (!req.user || !req.user.id) {
+    return res.status(403).send({ message: 'Access forbidden for guest users' });
+  }
+
+  const { postId, updates } = req.body;
+
+  if (!postId || !updates || typeof updates !== 'object') {
+    return res.status(400).json({ message: 'Post ID and valid updates are required' });
+  }
+
+  try {
+    const postRef = db.collection('posts').doc(postId);
+    const postSnapshot = await postRef.get();
+
+    if (!postSnapshot.exists) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // アップデートのフィールドのみを更新
+    await postRef.update(updates);
+
+    // 更新後のポストデータを取得
+    const updatedPost = Post.fromFirestore(await postRef.get());
+
+    res.status(200).json(updatedPost);
+  } catch (error) {
+    console.error('Error updating post details:', error);
+    res.status(500).json({ message: 'Error updating post details' });
+  }
+});
+
+// コメントの追加エンドポイント
+router.post('/comments', verifyJwtToken, async (req, res) => {
+  console.log('コメント追加リクエスト来たー');
+  console.log(req.user.id);
+
+  if (!req.user || !req.user.id) {
+    return res.status(403).send({ message: 'Access forbidden for guest users' });
+  }
+
+  const { postId, content } = req.body;
+  console.log('postId:', postId);
+  console.log('content:', content);
+  if (!postId || !content) {
+    return res.status(400).send({ message: 'Post ID and content are required' });
+  }
+
+  try {
+    // ユーザー情報を取得
+    const userSnapshot = await db.collection('users').doc(req.user.id).get();
+    const userData = userSnapshot.data();
+    console.log('userData:', userData);
+
+    // 新しいコメントを作成
+    const newComment = new Comment({
+      postId,
+      uid: req.user.id,
+      username: userData.username,
+      profileImageUrl: userData.profileImageUrl,
+      content,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await newComment.save();
+    const commentId = newComment.commentId;
+
+    // Postモデルの comments 配列に新しいコメントIDを追加
+    const postRef = db.collection('posts').doc(postId);
+    await postRef.update({
+      comments: admin.firestore.FieldValue.arrayUnion(commentId)
+    });
+
+    res.status(201).json(newComment.toJson());
+  } catch (error) {
+    console.error('コメントの追加に失敗しました:', error);
+    res.status(500).send({ message: 'コメントの追加に失敗しました' });
+  }
+});
+
+// 特定のPostに紐づくコメントを取得
+router.get('/comments/:postId', verifyJwtToken, async (req, res) => {
+  console.log('コメントのfetchリクエスト来た');
+
+  if (!req.user || !req.user.id) {
+      return res.status(403).send({ message: 'Access forbidden for guest users' });
+  }
+
+  const postId = req.params.postId;
+  console.log('postId:', postId);
+  try {
+      const commentsSnapshot = await db.collection('comments').where('postId', '==', postId).get();
+
+      const comments = commentsSnapshot.empty ? [] : commentsSnapshot.docs.map(doc => {
+          let comment = doc.data();
+          comment.createdAt = comment.createdAt.toDate();
+          comment.updatedAt = comment.updatedAt.toDate();
+          console.log('コメント:', comment);
+          return comment;
+      });
+      res.status(200).json({ comments: comments });
+  } catch (error) {
+      console.error('コメントの取得に失敗しました:', error);
+      res.status(500).send({ message: 'コメントの取得に失敗しました' });
+  }
+});
+
+// 添削の追加エンドポイント
+router.post('/corrections', verifyJwtToken, async (req, res) => {
+  console.log('添削追加リクエスト来たー');
+  if (!req.user || !req.user.id) {
+    return res.status(403).send({ message: 'Access forbidden for guest users' });
+  }
+
+  const { postId, content } = req.body;
+  if (!postId || !content) {
+    return res.status(400).send({ message: 'Post ID and content are required' });
+  }
+
+  try {
+    // ユーザー情報を取得
+    const userSnapshot = await db.collection('users').doc(req.user.id).get();
+    const userData = userSnapshot.data();
+
+    // 新しい添削を作成
+    const newCorrection = new Correction({
+      postId,
+      uid: req.user.id,
+      username: userData.username,
+      profileImageUrl: userData.profileImageUrl,
+      content,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await newCorrection.save();
+    const correctionId = newCorrection.correctionId;
+
+    // Postモデルのrevisions配列に新しいコメントIDを追加
+    const postRef = db.collection('posts').doc(postId);
+    await postRef.update({
+      revisions: admin.firestore.FieldValue.arrayUnion(correctionId)
+    });
+
+    res.status(201).json(newCorrection.toJson());
+  } catch (error) {
+    console.error('添削の追加に失敗しました:', error);
+    res.status(500).send({ message: '添削の追加に失敗しました' });
+  }
+});
+
+// 特定のPostに紐づく添削を取得
+router.get('/corrections/:postId', verifyJwtToken, async (req, res) => {
+  console.log('添削のfetchリクエスト来た');
+
+  if (!req.user || !req.user.id) {
+      return res.status(403).send({ message: 'Access forbidden for guest users' });
+  }
+
+  const postId = req.params.postId;
+  console.log('postId:', postId);
+  try {
+    const correctionsSnapshot = await db.collection('corrections').where('postId', '==', postId).get();
+
+    const corrections = correctionsSnapshot.empty ? [] : correctionsSnapshot.docs.map(doc => {
+        let correction = doc.data();
+        correction.createdAt = correction.createdAt.toDate();
+        correction.updatedAt = correction.updatedAt.toDate();
+        console.log('添削:', correction);
+        return correction;
+    });
+    res.status(200).json({ corrections: corrections });
+} catch (error) {
+    console.error('添削の取得に失敗しました:', error);
+    res.status(500).send({ message: '添削の取得に失敗しました' });
+}
+});
+
+module.exports = router;

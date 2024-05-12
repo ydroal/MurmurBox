@@ -5,6 +5,7 @@ const secretKey = process.env.JWT_SECRET;
 // JWTの検証
 const verifyJwtToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
+  console.log(authHeader);
   const token = authHeader && authHeader.split(' ')[1]; // Bearerトークンの形式に対応
 
   if (!token) {
@@ -16,6 +17,7 @@ const verifyJwtToken = (req, res, next) => {
     if (err) {
       return res.status(401).send({ message: 'Failed to authenticate token.' });
     }
+    console.log('Authenticated user:', user);  // ユーザー情報をログ出力
     // ユーザー情報をreq.userに保存
     req.user = user;
     next();

@@ -54,7 +54,7 @@ class Post {
       jpText: this.jpText,
       frText: this.frText,
       aiText: this.aiText,
-      createdAt: this.createdAt instanceof admin.firestore.Timestamp ? this.createdAt : admin.firestore.Timestamp.fromDate(this.createdAt),
+      createdAt: this.createdAt instanceof admin.firestore.Timestamp ? this.createdAt.toDate().toISOString() : this.createdAt,
       privacyLevel: this.privacyLevel,
       revisionRequested: this.revisionRequested,
       comments: this.comments,
