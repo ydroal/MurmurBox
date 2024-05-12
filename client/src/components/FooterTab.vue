@@ -1,23 +1,26 @@
 <script setup>
 import { useRouter } from 'vue-router';
 import { computed, ref } from 'vue';
-import { useUserStore } from '@/stores/user';
+// import { useUserStore } from '@/stores/user';
+import { usePostsStore } from '@/stores/posts';
 
 const router = useRouter();
-const userStore = useUserStore();
-const isUserLoggedIn = computed(() => userStore.isLoggedIn);
+// const userStore = useUserStore();
+// const isUserLoggedIn = computed(() => userStore.isLoggedIn);
+const postsStore = usePostsStore();
+const newRevisions = computed(() => postsStore.newRevisionCount);
 
 // ツールチップの表示状態を管理
 const showTooltip = ref(false);
 
-const handleAccountClick = event => {
-  if (!isUserLoggedIn.value) {
-    showTooltip.value = true;
-    setTimeout(() => (showTooltip.value = false), 3000);
-  } else {
-    router.push('/account');
-  }
-};
+// const handleAccountClick = event => {
+//   if (!isUserLoggedIn.value) {
+//     showTooltip.value = true;
+//     setTimeout(() => (showTooltip.value = false), 3000);
+//   } else {
+//     router.push('/account');
+//   }
+// };
 </script>
 
 <template>
@@ -47,12 +50,13 @@ const handleAccountClick = event => {
         </div>
         <span class="text-xs">Home</span>
       </router-link>
-      <router-link
+      <router-link to="/account" class="tab" :class="{ active: $route.path === '/account' }">
+        <!-- <router-link
         :to="isUserLoggedIn.value ? '/account' : '#'"
         class="tab"
         :class="{ active: $route.path === '/account' }"
         @click="handleAccountClick"
-      >
+      > -->
         <div class="relative icon-container">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -208,6 +212,13 @@ const handleAccountClick = event => {
               fill="currentColor"
             />
           </svg>
+        </div>
+        <!-- 通知バッジ -->
+        <div
+          v-if="newRevisions > 0"
+          class="absolute inline-flex items-center justify-center w-6 h-6 text-[0.8rem] text-dark bg-orange rounded-full -top-2 -end-[0.8rem]"
+        >
+          {{ newRevisions }}
         </div>
         <span class="text-xs">Edit me</span>
       </router-link>

@@ -20,9 +20,9 @@ const currentInputText = ref('');
 const selectedPostId = ref(null);
 
 // マウント時にpostsデータを取得
-onMounted(async () => {
-  await postsStore.fetchPostsWithDetail();
-});
+// onMounted(async () => {
+//   await postsStore.fetchPostsWithDetail();
+// });
 
 const formatDate = dateStr => {
   const date = new Date(dateStr);
@@ -87,7 +87,7 @@ const fetchCorrectionsForPost = async postId => {
   }
 };
 
-// Updateしたポストだけを更新
+// Updateしたポストだけを取得
 const updateSpecificPostDetails = async postId => {
   try {
     const res = await axiosInstance.get(`/post-details/${postId}`);

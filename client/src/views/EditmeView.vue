@@ -1,12 +1,14 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { usePostsStore } from '@/stores/posts';
+import { useUserStore } from '@/stores/user';
 import axiosInstance from '@/axios';
 import PopupForm from '@/components/PopupForm.vue';
 import UserIcon from '@/assets/icons/icon_user.png';
 
+const userStore = useUserStore();
 const postsStore = usePostsStore();
-const posts = computed(() => postsStore.allPosts);
+const posts = computed(() => postsStore.revisionRequestedPosts);
 const displayComments = ref(false);
 const displayCorrections = ref(false);
 const comments = ref([]);
@@ -17,7 +19,8 @@ const currentInputText = ref('');
 const selectedPostId = ref(null);
 
 onMounted(async () => {
-  await postsStore.fetchPostsWithDetail();
+  // await postsStore.fetchPostsWithDetail();
+  await userStore.updateLastVisitedEditMe(); // 最終訪問日を更新
 });
 
 const formatDate = dateStr => {

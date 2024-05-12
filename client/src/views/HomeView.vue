@@ -6,9 +6,11 @@ import axiosInstance from '@/axios';
 import { useLoginModalStore } from '@/stores/loginModal';
 import LoginModal from '@/components/LoginModal.vue';
 import { useUserStore } from '@/stores/user';
+import { usePostsStore } from '@/stores/posts';
 
 const userStore = useUserStore();
 const isUserLoggedIn = computed(() => userStore.isLoggedIn);
+const postsStore = usePostsStore();
 
 // マウント時にリダイレクト結果を取得
 onMounted(() => {
@@ -24,9 +26,13 @@ onMounted(() => {
             token: googleIdToken
           });
           console.log('レスポンスjwt', res.data.jwt);
-          // const userStore = useUserStore();
           userStore.user = res.data.user; // ユーザー情報を保存
+          console.log('lastVisitedEditMe:', res.data.user.lastVisitedEditMe);
+          userStore.lastVisitedEditMe = res.data.user.lastVisitedEditMe;
           localStorage.setItem('jwt', res.data.jwt); // JWTトークンを保存
+          if (userStore.isLoggedIn) {
+            await postsStore.fetchPostsWithDetail(); // ログインが確認できたらポストデータをフェッチ
+          }
         } catch (error) {
           console.error('バックエンドへのトークン送信エラー:', error);
         }
