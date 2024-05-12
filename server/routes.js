@@ -43,6 +43,7 @@ router.post('/auth/google/validate', async (req, res) => {
       console.log('User document exists:', userDoc.data());
       user = User.fromFirestore(userDoc);
       user.lastLogin = new Date();
+      user.lastVisitedEditMe = user.lastVisitedEditMe || new Date(); // 既存ユーザーに新フィールドを初期化
     } else {
       // 新規ユーザーを作成
       const newUsername = decodedUser.name || '';
@@ -53,6 +54,7 @@ router.post('/auth/google/validate', async (req, res) => {
         profileImageUrl: '',
         createdAt: new Date(),
         lastLogin: new Date(),
+        lastVisitedEditMe: new Date(), // 新規ユーザーのフィールドを初期化
         searchKey: newUsername ? newUsername.charAt(0).toLowerCase() : '',
       });
     }
@@ -504,6 +506,42 @@ router.get('/corrections/:postId', verifyJwtToken, async (req, res) => {
     console.error('添削の取得に失敗しました:', error);
     res.status(500).send({ message: '添削の取得に失敗しました' });
 }
+});
+
+// EditMeページへの最終訪問日をアップデートするエンドポイント
+router.put('/user/last-visit-editme', verifyJwtToken, async (req, res) => {
+  console.log('EditMeページへの最終訪問日をアップデートリクエスト来た');
+
+  if (!req.user || !req.user.id) {
+      return res.status(403).send({ message: 'Access forbidden for guest users' });
+  }
+
+  try {
+    const userId = req.user.id;
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const user = User.fromFirestore(userDoc);
+    user.lastVisitedEditMe = new Date(); // 現在日時に更新
+    await user.save();
+    const userJson = user.toJson();
+
+    // 日時フィールドをISO 8601形式に変換してレスポンスに含める
+    res.status(200).json({
+      user: {
+        ...userJson,
+        createdAt: user.createdAt.toISOString(),
+        lastLogin: user.lastLogin.toISOString(),
+        lastVisitedEditMe: user.lastVisitedEditMe.toISOString()
+      },
+      message: 'Last visit date updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating last visit edit me info:', error);
+    res.status(500).json({ message: 'Failed to update last visit edit me info' });
+  }
 });
 
 module.exports = router;

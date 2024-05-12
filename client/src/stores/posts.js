@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import axiosInstance from '@/axios';
+import { useUserStore } from '@/stores/user';
 
 export const usePostsStore = defineStore({
   id: 'posts',
@@ -7,7 +8,8 @@ export const usePostsStore = defineStore({
     posts: [],
     myPosts: [],
     isLoading: false,
-    error: null
+    error: null,
+    newRevisionCount: 0
   }),
   getters: {
     allPosts: state => state.posts,
@@ -20,6 +22,7 @@ export const usePostsStore = defineStore({
       try {
         const res = await axiosInstance.get('/posts-with-details');
         this.posts = res.data.posts;
+        this.updateRevisionCount(); // 新しい投稿数を更新
       } catch (error) {
         console.error('Failed to fetch posts with users:', error);
         this.error = 'Failed to load posts.';
@@ -38,6 +41,13 @@ export const usePostsStore = defineStore({
       } finally {
         this.isLoading = false;
       }
+    },
+    updateRevisionCount() {
+      const userStore = useUserStore();
+      const lastVisited = userStore.lastVisitedEditMe;
+      this.newRevisionCount = this.revisionRequestedPosts.filter(
+        post => new Date(post.createdAt) > new Date(lastVisited)
+      ).length;
     }
   }
 });
