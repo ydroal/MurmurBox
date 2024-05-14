@@ -9,6 +9,7 @@ const User = require('./models/user');
 const Post = require('./models/post');
 const Comment = require('./models/comment');
 const Correction = require('./models/correction');
+const Dico = require('./models/dico');
 
 const authKey = process.env.DEEPL_API_KEY;
 const translator = new deepl.Translator(authKey);
@@ -583,6 +584,38 @@ router.delete('/delete-post/:postId', verifyJwtToken, async (req, res) => {
   } catch (error) {
     console.error('Error deleting post:', error);
     res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// 辞書データを追加するPOSTエンドポイント
+router.post('/dico', verifyJwtToken, async (req, res) => {
+  console.log('辞書登録リクエスト来たー');
+
+  if (!req.user || !req.user.id) {
+    return res.status(403).send({ message: 'Access forbidden for guest users' });
+  }
+
+  const { term, definition } = req.body;
+  if (!term || !definition) {
+    return res.status(400).send({ message: 'Term and definition are required.' });
+  }
+
+  try {
+    const alphabet = term.charAt(0).toUpperCase();
+    const newDico = new Dico({
+      uid: req.user.id,
+      term,
+      definition,
+      alphabet,
+      createdAt: new Date()
+    });
+    
+    await newDico.save();
+
+    res.status(201).send({ message: 'Dico data added successfully', dicoId: newDico.dicoid });
+  } catch (error) {
+    console.error('Error adding Dico data:', error);
+    res.status(500).send({ message: 'Failed to add Dico data', error: error.message });
   }
 });
 

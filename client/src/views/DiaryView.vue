@@ -672,7 +672,7 @@ const showPreviousDiary = () => {
           </div>
         </div>
         <!-- 前の日記、次の日記 -->
-        <div class="flex justify-center items-center mt-0 w-full px-12">
+        <div class="flex justify-center items-center my-4 w-full px-12">
           <a href="#" v-if="currentIndex > 0" class="text-sm font-jp text-dark expansion" @click="showNextDiary">
             &lt; &nbsp;&nbsp;前の日記
           </a>
