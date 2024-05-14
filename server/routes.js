@@ -211,7 +211,6 @@ router.get('/posts', verifyJwtToken, async (req, res) => {
 // フィルタリングされたPostデータ（privacyLevel: false）とpostのユーザー情報を取得するエンドポイント
 router.get('/posts-with-details', verifyJwtToken, async (req, res) => {
   console.log('Feed用Postsのfetchリクエスト来た');
-  console.log('Authenticated user:', req.user);  // ユーザー情報を確認
 
   if (!req.user || !req.user.id) {
     return res.status(403).send({ message: 'Access forbidden for guest users' });
@@ -221,6 +220,7 @@ router.get('/posts-with-details', verifyJwtToken, async (req, res) => {
     // postsSnapshotは投稿データ全体のスナップショットオブジェクト。各ドキュメントの参照を保持
     const postsSnapshot = await db.collection('posts')
       .where('privacyLevel', '==', false)
+      .orderBy('createdAt', 'desc')
       .get(); //getはPromiseを返しawaitで結果をpostsSnapshotに格納
 
       const postsDetailedInfo = await Promise.all(postsSnapshot.docs.map(async (postDoc) => {
@@ -283,7 +283,7 @@ router.get('/post-details/:postId', verifyJwtToken, async (req, res) => {
     const correctionCountSnapshot = await db.collection('corrections').where('postId', '==', postId).get();
     const correctionCount = correctionCountSnapshot.size;
 
-    const createdAt = new Date(postData.createdAt.seconds * 1000).toISOString();
+    const createdAt = new Date(postData.createdAt);
 
     res.status(200).json({
       ...postData,
@@ -300,7 +300,7 @@ router.get('/post-details/:postId', verifyJwtToken, async (req, res) => {
   }
 });
 
-// ログインユーザーの投稿を取得するAPIエンドポイント
+// ログインユーザーの投稿を取得するAPIエンドポイント（Diaryページ用）
 router.get('/my-posts', verifyJwtToken, async (req, res) => {
   console.log('Diary用Postsのfetchリクエスト来た');
 
@@ -312,14 +312,24 @@ router.get('/my-posts', verifyJwtToken, async (req, res) => {
     const uid = req.user.id;
     const postsSnapshot = await db.collection('posts')
       .where('uid', '==', uid)
+      .orderBy('createdAt', 'desc')
       .get();
 
-    const posts = postsSnapshot.docs.map(doc => {
-      // PostクラスのfromFirestoreを使用してPostインスタンスを作成し、toJsonを呼び出す
-      const post = Post.fromFirestore(doc);
-      return post.toJson();
-    });
+      const posts = await Promise.all(postsSnapshot.docs.map(async doc => {
+        const postData = doc.data(); // ドキュメントからデータを取得
+        postData.createdAt = postData.createdAt.toDate().toISOString(); // createdAtをISO 8601形式に変換
+  
+        const commentCountSnapshot = await db.collection('comments').where('postId', '==', doc.id).get();
+        const commentCount = commentCountSnapshot.size;
+        const correctionCountSnapshot = await db.collection('corrections').where('postId', '==', doc.id).get();
+        const correctionCount = correctionCountSnapshot.size;
 
+      return {
+        ...postData,
+        commentCount,
+        correctionCount,
+      };
+    }));
     res.json({ posts });
   } catch (error) {
     console.error('Error fetching user posts:', error);
@@ -543,5 +553,38 @@ router.put('/user/last-visit-editme', verifyJwtToken, async (req, res) => {
     res.status(500).json({ message: 'Failed to update last visit edit me info' });
   }
 });
+
+// Postを削除するエンドポイント
+router.delete('/delete-post/:postId', verifyJwtToken, async (req, res) => {
+  console.log('Post削除リクエストが来た');
+
+  if (!req.user || !req.user.id) {
+    return res.status(403).send({ message: 'Access forbidden for guest users' });
+  }
+
+  const { postId } = req.params;
+
+  try {
+    const postSnapshot = await db.collection('posts').doc(postId).get();
+    if (!postSnapshot.exists) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    const post = Post.fromFirestore(postSnapshot);
+
+    // 投稿の所有者が現在のユーザーと一致するか確認
+    if (post.uid !== req.user.id) {
+      return res.status(403).json({ message: 'You do not have permission to delete this post' });
+    }
+
+    await post.deletePost();
+
+    res.status(200).json({ message: 'Post deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
 
 module.exports = router;

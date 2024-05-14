@@ -62,8 +62,8 @@ input[type="checkbox"] {
 
 #scrollbar::-webkit-scrollbar
 {
-  width:5px;
-  background:#eee;
+  width:3px;
+  background:black;
 }
 
 #scrollbar::-webkit-scrollbar:horizontal
