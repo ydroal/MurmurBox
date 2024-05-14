@@ -1,21 +1,30 @@
 <script setup>
 import { ref } from 'vue';
 import axiosInstance from '@/axios';
+import Snackbar from '@/components/Snackbar.vue';
 
 const jpWord = ref('');
 const frWord = ref('');
+const snackbarVisible = ref(false);
+const snackbarMessage = ref('');
 
-// Addボタンのクリックアクション
 const addDico = async () => {
   try {
-    const res = await axiosInstance.post('/post', {
-      jpWord: jpWord.value,
-      frText: frWord.value
+    const res = await axiosInstance.post('/dico', {
+      term: frWord.value,
+      definition: jpWord.value
     });
-    console.log('Diary data posted:', res.data);
-    frWord.value = res.data.frWord;
+    console.log('Dico data added:', res.data);
+    frWord.value = '';
+    jpWord.value = '';
+    snackbarMessage.value = '辞書が登録されました';
+    snackbarVisible.value = true;
+    setTimeout(() => (snackbarVisible.value = false), 3000); // 3秒後にスナックバーを非表示にする
   } catch (error) {
-    console.error('Error posting diary data:', error);
+    console.error('Error adding Dico data:', error);
+    snackbarMessage.value = '辞書の登録に失敗しました';
+    snackbarVisible.value = true;
+    setTimeout(() => (snackbarVisible.value = false), 3000); // 3秒後にスナックバーを非表示にする
   }
 };
 </script>
@@ -44,7 +53,7 @@ const addDico = async () => {
             <span class="text-sm font-fr">JP</span>
           </div>
           <textarea
-          v-model="jpWord"
+            v-model="jpWord"
             maxlength="300"
             type="text"
             pattern="^[a-zA-Z0-9]+$"
@@ -61,6 +70,7 @@ const addDico = async () => {
         >
           Add
         </button>
+        <Snackbar :isVisible="snackbarVisible" :message="snackbarMessage" />
         <div class="flex justify-end mt-3">
           <router-link to="/my-dico">
             <div class="flex flex-col justify-center items-center w-[60px] h-[60px] bg-dark rounded-[15px]">

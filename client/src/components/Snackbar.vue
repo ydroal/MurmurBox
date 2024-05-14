@@ -1,25 +1,24 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 const props = defineProps({
   message: String,
-  duration: {
-    type: Number,
-    default: 3000
-  }
+  isVisible: Boolean
 });
 
-const visible = ref(false);
+const visible = ref(props.isVisible);
 
-// const show = () => {
-//   visible.value = true;
-//   setTimeout(() => {
-//     visible.value = false;
-//   }, props.duration);
-// };
-
-// // setup() から show メソッドを直接返して、コンポーネント外からアクセス可能にする
-// export { show };
+watch(
+  () => props.isVisible,
+  newVal => {
+    visible.value = newVal;
+    if (newVal) {
+      setTimeout(() => {
+        visible.value = false; // 一定時間後に自動で閉じる
+      }, 3000);
+    }
+  }
+);
 </script>
 
 <template>
@@ -29,3 +28,20 @@ const visible = ref(false);
     </div>
   </transition>
 </template>
+
+<style scoped>
+.snackbar {
+  width: 100%;
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--custom-orange);
+  color: var(--custom-ivory);
+  font-weight: 600;
+  text-align: center;
+  padding: 10px 20px;
+  border-radius: 5px;
+  animation: slide-in-out 3s;
+}
+</style>
