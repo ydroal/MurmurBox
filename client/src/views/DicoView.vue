@@ -1,4 +1,24 @@
-<script setup></script>
+<script setup>
+import { ref } from 'vue';
+import axiosInstance from '@/axios';
+
+const jpWord = ref('');
+const frWord = ref('');
+
+// Addボタンのクリックアクション
+const addDico = async () => {
+  try {
+    const res = await axiosInstance.post('/post', {
+      jpWord: jpWord.value,
+      frText: frWord.value
+    });
+    console.log('Diary data posted:', res.data);
+    frWord.value = res.data.frWord;
+  } catch (error) {
+    console.error('Error posting diary data:', error);
+  }
+};
+</script>
 
 <template>
   <div class="pt-24 px-5">
@@ -24,6 +44,7 @@
             <span class="text-sm font-fr">JP</span>
           </div>
           <textarea
+          v-model="jpWord"
             maxlength="300"
             type="text"
             pattern="^[a-zA-Z0-9]+$"
@@ -35,6 +56,7 @@
 
       <div class="w-full relative">
         <button
+          @click="addDico"
           class="absolute left-1/2 top-0 transform -translate-x-1/2 bg-orange text-ivory font-en w-16 h-10 rounded-xl hover:bg-orange-700"
         >
           Add

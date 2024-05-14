@@ -13,6 +13,7 @@ export const usePostsStore = defineStore({
   }),
   getters: {
     allPosts: state => state.posts,
+    userPosts: state => state.myPosts,
     revisionRequestedPosts: state => state.posts.filter(post => post.revisionRequested === true)
   },
   actions: {
