@@ -212,7 +212,7 @@ const showPreviousDiary = () => {
 <template>
   <div class="container">
     <div class="pt-24 px-5">
-      <h2 class="font-jp text-dark text-base font-thin text-center mb-8">私の日記</h2>
+      <h2 class="font-jp text-dark text-base font-light text-center mb-8">私の日記</h2>
     </div>
     <div class="flex flex-col items-center justify-center py-8 px-4">
       <!---カレンダー --->

@@ -93,7 +93,7 @@ const handleMouseLeave = () => {
 
 <template>
   <div class="pt-24 px-5">
-    <h2 class="font-jp text-dark text-base font-thin text-center" :class="{ 'mb-16': !isPosted, 'mb-1': isPosted }">
+    <h2 class="font-jp text-dark text-base font-light text-center" :class="{ 'mb-16': !isPosted, 'mb-1': isPosted }">
       {{ isPosted ? 'AIの作成した日記と比べてみよう' : '日記を書く。' }}
     </h2>
     <p class="font-jp text-dark text-xs text-center mb-12" v-if="isPosted">

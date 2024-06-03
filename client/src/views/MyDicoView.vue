@@ -2,7 +2,7 @@
 
 <template>
   <div class="pt-24 px-5">
-    <h2 class="font-jp text-dark text-base font-thin text-center mb-1">My Dico</h2>
+    <h2 class="font-jp text-dark text-base font-light text-center mb-1">My Dico</h2>
   </div>
 
   <h1 class="text-6xl text-dark text-center mt-20 mb-20">Under Construction</h1>

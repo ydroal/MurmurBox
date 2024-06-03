@@ -20,9 +20,9 @@ const currentInputText = ref('');
 const selectedPostId = ref(null);
 
 // マウント時にpostsデータを取得
-// onMounted(async () => {
-//   await postsStore.fetchPostsWithDetail();
-// });
+onMounted(async () => {
+  await postsStore.fetchPostsWithDetail();
+});
 
 const formatDate = dateStr => {
   const date = new Date(dateStr);
@@ -190,18 +190,14 @@ const closePopup = () => {
 
 <template>
   <div class="pt-24 px-5">
-    <h2 class="font-jp text-dark text-base font-thin text-center mb-1">みんなの日記</h2>
+    <h2 class="font-jp text-dark text-base font-light text-center mb-1">みんなの日記</h2>
     <p class="font-jp text-dark text-xs text-center mb-12">コメントや日記の添削をしよう。</p>
 
     <!-- 日記の表示 -->
     <div v-for="post in posts" :key="post.id" class="w-full mb-4">
       <div class="flex items-center">
         <div class="flex justify-start items-center space-x-1.5 mb-2 pl-1">
-          <img
-            :src="post.profileImageUrl || '@/assets/icons/icon_user.png'"
-            alt="User Icon"
-            class="w-11 h-11 rounded-full object-cover"
-          />
+          <img :src="post.profileImageUrl || UserIcon" alt="User Icon" class="w-11 h-11 rounded-full object-cover" />
           <span class="text-dark font-bold">{{ post.username }}</span>
         </div>
         <span class="text-dark text-sm font-en ml-auto pr-2">{{ formatDate(post.createdAt) }}</span>
@@ -386,5 +382,19 @@ const closePopup = () => {
 .read-more > div {
   max-height: 220px;
   overflow: auto; /* スクロールバーを表示 */
+}
+
+.container {
+  max-height: calc(100vh - (100px));
+  /* height: calc(100vh - (100px)); */
+  overflow-y: auto;
+  /*スクロールバー非表示（IE・Edge）*/
+  -ms-overflow-style: none;
+  /*スクロールバー非表示（Firefox）*/
+  scrollbar-width: none;
+}
+/*スクロールバー非表示（Chrome・Safari）*/
+.container::-webkit-scrollbar {
+  display: none;
 }
 </style>
