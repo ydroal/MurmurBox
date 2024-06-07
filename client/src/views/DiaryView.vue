@@ -3,6 +3,7 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { usePostsStore } from '@/stores/posts';
 import axiosInstance from '@/axios';
 import UserIcon from '@/assets/icons/icon_user.png';
+import { signInToFirebase } from '@/firebase';
 
 const postsStore = usePostsStore();
 const diaries = computed(() => postsStore.userPosts);
@@ -17,6 +18,7 @@ const correctionRequest = ref(false);
 const currentIndex = computed(() => diaries.value.findIndex(diary => diary.postId === selectedDiary.value.postId));
 
 onMounted(async () => {
+  await signInToFirebase();
   await postsStore.fetchMyPosts();
 });
 

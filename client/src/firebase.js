@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from 'firebase/app';
-import { getAuth, signOut } from 'firebase/auth';
+import { getAuth, signOut, signInWithCredential, GoogleAuthProvider } from 'firebase/auth';
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -17,4 +17,19 @@ const firebase = initializeApp(firebaseConfig);
 
 const auth = getAuth(firebase);
 
-export { auth, signOut };
+const signInToFirebase = async () => {
+  const googleIdToken = localStorage.getItem('googleIdToken');
+  if (googleIdToken) {
+    try {
+      const credential = GoogleAuthProvider.credential(googleIdToken);
+      await signInWithCredential(auth, credential);
+      console.log('Firebaseサインイン成功');
+    } catch (error) {
+      console.error('Firebaseサインインエラー:', error);
+    }
+  } else {
+    console.log('Google IDトークンが見つかりません');
+  }
+};
+
+export { auth, signOut, signInToFirebase };

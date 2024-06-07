@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { auth } from '@/firebase';
+import { auth, signInToFirebase } from '@/firebase';
 import { getRedirectResult } from 'firebase/auth';
 import axiosInstance from '@/axios';
 import { useLoginModalStore } from '@/stores/loginModal';
@@ -27,9 +27,12 @@ onMounted(() => {
           });
           console.log('レスポンスjwt', res.data.jwt);
           userStore.user = res.data.user; // ユーザー情報を保存
-          console.log('lastVisitedEditMe:', res.data.user.lastVisitedEditMe);
           userStore.lastVisitedEditMe = res.data.user.lastVisitedEditMe;
           localStorage.setItem('jwt', res.data.jwt); // JWTトークンを保存
+          localStorage.setItem('googleIdToken', googleIdToken); // Cloud Storageへのアクセス用にGoogle IDトークンを保存
+
+          await signInToFirebase();
+
           if (userStore.isLoggedIn) {
             await postsStore.fetchPostsWithDetail(); // ログインが確認できたらポストデータをフェッチ
           }

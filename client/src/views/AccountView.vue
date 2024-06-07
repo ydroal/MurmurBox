@@ -4,6 +4,7 @@ import { ref, onMounted, watch } from 'vue';
 import { useUserStore } from '@/stores/user';
 import UserIcon from '@/assets/icons/icon_user.png';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { signInToFirebase } from '@/firebase';
 
 const userStore = useUserStore();
 
@@ -13,7 +14,8 @@ let editMode = ref(false); // 編集モードを管理するためのref
 let selectedFile = ref(null); // 選択された画像ファイルを保持するための変数
 let previewImageUrl = ref(null);
 
-onMounted(() => {
+onMounted(async () => {
+  await signInToFirebase(); // Firebaseにサインインを確認
   if (userStore.user) {
     userInfo.value = { ...userStore.user };
     initialUserInfo.value = { ...userStore.user };
@@ -57,6 +59,7 @@ const update = async () => {
       return; // 画像のアップロードに失敗した場合はここで処理を中断
     }
   }
+
   if (Object.keys(updates).length > 0) {
     try {
       const res = await axiosInstance.put('/user/update', updates);
