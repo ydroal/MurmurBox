@@ -5,6 +5,7 @@ import { useUserStore } from '@/stores/user';
 import axiosInstance from '@/axios';
 import PopupForm from '@/components/PopupForm.vue';
 import UserIcon from '@/assets/icons/icon_user.png';
+import { signInToFirebase } from '@/firebase';
 
 const userStore = useUserStore();
 const postsStore = usePostsStore();
@@ -19,6 +20,7 @@ const currentInputText = ref('');
 const selectedPostId = ref(null);
 
 onMounted(async () => {
+  await signInToFirebase();
   // await postsStore.fetchPostsWithDetail();
   await userStore.updateLastVisitedEditMe(); // 最終訪問日を更新
 });

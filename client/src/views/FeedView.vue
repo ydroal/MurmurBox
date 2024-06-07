@@ -5,6 +5,7 @@ import { usePostsStore } from '@/stores/posts';
 import axiosInstance from '@/axios';
 import PopupForm from '@/components/PopupForm.vue';
 import UserIcon from '@/assets/icons/icon_user.png';
+import { signInToFirebase } from '@/firebase';
 
 const postsStore = usePostsStore();
 const posts = computed(() => postsStore.allPosts);
@@ -21,6 +22,7 @@ const selectedPostId = ref(null);
 
 // マウント時にpostsデータを取得
 onMounted(async () => {
+  await signInToFirebase();
   await postsStore.fetchPostsWithDetail();
 });
 
