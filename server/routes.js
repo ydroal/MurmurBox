@@ -153,13 +153,13 @@ router.post('/post', verifyJwtToken, async (req, res) => {
     const result = await translator.translateText(jpText, 'ja', 'fr', { split_sentences: 'nonewlines' });
     const aiText = result.text;
 
-    // ユーザーがログインしていない、且つprivacyLevelが'private'の場合はDB登録をスキップ
-    if (!req.user && privacyLevel === true) {
+    // ユーザーがログインしていない場合はDB登録をスキップ
+    if (!req.user) {
       return res.status(200).json({ frText, aiText });
     }
-     // DB登録処理を行う
+     // ログインユーザーの場合は（privacyLevelにかかわらず）DB登録処理を行う
     const newPost = new Post({
-      uid: req.user ? req.user.id : 'guest',
+      uid: req.user.id,
       jpText,
       frText,
       aiText,
@@ -224,10 +224,19 @@ router.get('/posts-with-details', verifyJwtToken, async (req, res) => {
       .orderBy('createdAt', 'desc')
       .get(); //getはPromiseを返しawaitで結果をpostsSnapshotに格納
 
+    if (postsSnapshot.empty) {
+      return res.status(404).json({ message: 'No posts found' });
+    }
+
       const postsDetailedInfo = await Promise.all(postsSnapshot.docs.map(async (postDoc) => {
         const postData = postDoc.data();
+        console.log(postData.uid);
         const userSnapshot = await db.collection('users').doc(postData.uid).get();
+        if (!userSnapshot.exists) {
+          console.error(`ユーザードキュメントが見つかりません: ${postData.uid}`);
+        };
         const user = userSnapshot.data();
+        console.log(`ユーザードキュメント取得成功: ${user.username}`);
   
         // コメント数をカウント
         const commentCountSnapshot = await db.collection('comments').where('postId', '==', postDoc.id).get();

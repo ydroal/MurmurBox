@@ -4,7 +4,6 @@ import { ref, onMounted, watch } from 'vue';
 import { useUserStore } from '@/stores/user';
 import UserIcon from '@/assets/icons/icon_user.png';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { signInToFirebase } from '@/firebase';
 
 const userStore = useUserStore();
 
@@ -15,7 +14,6 @@ let selectedFile = ref(null); // 選択された画像ファイルを保持す�
 let previewImageUrl = ref(null);
 
 onMounted(async () => {
-  await signInToFirebase(); // Firebaseにサインインを確認
   if (userStore.user) {
     userInfo.value = { ...userStore.user };
     initialUserInfo.value = { ...userStore.user };

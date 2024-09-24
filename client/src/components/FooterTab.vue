@@ -1,26 +1,26 @@
 <script setup>
-import { useRouter } from 'vue-router';
-import { computed, ref } from 'vue';
-// import { useUserStore } from '@/stores/user';
+import { watch, computed, ref } from 'vue';
 import { usePostsStore } from '@/stores/posts';
 
-const router = useRouter();
-// const userStore = useUserStore();
-// const isUserLoggedIn = computed(() => userStore.isLoggedIn);
 const postsStore = usePostsStore();
 const newRevisions = computed(() => postsStore.newRevisionCount);
 
+watch(
+  () => postsStore.newRevisionCount,
+  (newValue, oldValue) => {
+    console.log(`postsStore.newRevisionCount changed from ${oldValue} to ${newValue}`);
+  }
+);
+
+watch(
+  () => newRevisions.value,
+  (newValue, oldValue) => {
+    console.log(`newRevisions changed from ${oldValue} to ${newValue}`);
+  }
+);
+
 // ツールチップの表示状態を管理
 const showTooltip = ref(false);
-
-// const handleAccountClick = event => {
-//   if (!isUserLoggedIn.value) {
-//     showTooltip.value = true;
-//     setTimeout(() => (showTooltip.value = false), 3000);
-//   } else {
-//     router.push('/account');
-//   }
-// };
 </script>
 
 <template>
@@ -28,7 +28,7 @@ const showTooltip = ref(false);
     class="font-en w-[600px] rounded-3xl fixed bottom-5 left-1/2 -translate-x-1/2 z-30 bg-dark shadow-md flex justify-around items-center"
   >
     <nav class="flex justify-between items-center max-w-screen-xl mx-auto px-[2.75rem] py-[0.6rem]">
-      <router-link to="/" class="tab" :class="{ active: $route.path === '/' }">
+      <router-link to="/" class="tab" exact-active-class="active">
         <div class="icon-container">
           <svg
             id="HomeIcon"
@@ -36,7 +36,7 @@ const showTooltip = ref(false);
             width="32"
             height="32"
             viewBox="0 0 32 32"
-            :class="['icon', { 'icon-active': $route.path === '/' }]"
+            class="icon"
             alt="Home"
           >
             <path
@@ -50,23 +50,9 @@ const showTooltip = ref(false);
         </div>
         <span class="text-xs">Home</span>
       </router-link>
-      <router-link to="/account" class="tab" :class="{ active: $route.path === '/account' }">
-        <!-- <router-link
-        :to="isUserLoggedIn.value ? '/account' : '#'"
-        class="tab"
-        :class="{ active: $route.path === '/account' }"
-        @click="handleAccountClick"
-      > -->
+      <router-link to="/account" class="tab" exact-active-class="active">
         <div class="relative icon-container">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="32"
-            height="28"
-            viewBox="0 0 32 28"
-            class="icon"
-            :class="['icon', { 'icon-active': $route.path === '/account' }]"
-            alt="Account"
-          >
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="28" viewBox="0 0 32 28" class="icon" alt="Account">
             <path
               id="_58"
               data-name="58"
@@ -82,7 +68,7 @@ const showTooltip = ref(false);
         </div>
         <span class="text-xs">Account</span>
       </router-link>
-      <router-link to="/diary" class="tab" :class="{ active: $route.path === '/diary' }">
+      <router-link to="/diary" class="tab" exact-active-class="active">
         <div class="icon-container">
           <svg
             id="DiaryIcon"
@@ -91,7 +77,6 @@ const showTooltip = ref(false);
             height="32"
             viewBox="0 0 25 32"
             class="icon"
-            :class="['icon', { 'icon-active': $route.path === '/diary' }]"
             alt="Diary"
           >
             <path
@@ -105,7 +90,7 @@ const showTooltip = ref(false);
         </div>
         <span class="text-xs">Diary</span>
       </router-link>
-      <router-link to="/dico" class="tab" :class="{ active: $route.path === '/dico' }">
+      <router-link to="/dico" class="tab" exact-active-class="active">
         <div class="icon-container">
           <svg
             id="Dico"
@@ -114,7 +99,6 @@ const showTooltip = ref(false);
             height="32"
             viewBox="0 0 27 32"
             class="icon"
-            :class="['icon', { 'icon-active': $route.path === '/dico' }]"
             alt="Dico"
           >
             <line
@@ -171,7 +155,7 @@ const showTooltip = ref(false);
         </div>
         <span class="text-xs">Dico</span>
       </router-link>
-      <router-link to="/feed" class="tab" :class="{ active: $route.path === '/feed' }">
+      <router-link to="/feed" class="tab" exact-active-class="active">
         <div class="icon-container">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -179,7 +163,6 @@ const showTooltip = ref(false);
             height="32"
             viewBox="0 0 23.999 32"
             class="icon"
-            :class="['icon', { 'icon-active': $route.path === '/feed' }]"
             alt="Feed"
           >
             <path
@@ -193,7 +176,7 @@ const showTooltip = ref(false);
         </div>
         <span class="text-xs">Feed</span>
       </router-link>
-      <router-link to="/editme" class="tab" :class="{ active: $route.path === '/editme' }">
+      <router-link to="/editme" class="tab" exact-active-class="active">
         <div class="icon-container">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -201,7 +184,6 @@ const showTooltip = ref(false);
             height="25.698"
             viewBox="0 0 25.711 25.698"
             class="icon"
-            :class="['icon', { 'icon-active': $route.path === '/editme' }]"
             alt="Edit me"
           >
             <path
@@ -283,7 +265,6 @@ const showTooltip = ref(false);
   margin-top: 4.5px; /* アイコンとの間隔 */
   color: var(--custom-ivory);
 }
-
 .tab.active span {
   color: var(--custom-dark);
 }

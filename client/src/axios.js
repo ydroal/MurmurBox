@@ -11,6 +11,7 @@ const axiosInstance = axios.create({
 // インターセプターの設定
 axiosInstance.interceptors.request.use(config => {
   const token = localStorage.getItem('jwt');
+  console.log('JWTトークン:', token); // トークンが正しいか確認
   config.headers.Authorization = token ? `Bearer ${token}` : '';
   return config;
 });
