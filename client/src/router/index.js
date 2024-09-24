@@ -56,10 +56,16 @@ const router = createRouter({
   ]
 });
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore();
   const loginModalStore = useLoginModalStore();
 
+  // 認証状態が初期化されるまで待機
+  if (!userStore.isInitialized) {
+    await userStore.checkUserFromToken();
+  }
+
+  // 現在のルート（to）がmeta.requiresAuthを持っているかを確認
   if (to.matched.some(record => record.meta.requiresAuth)) {
     if (!userStore.isLoggedIn) {
       loginModalStore.openModal();
@@ -71,6 +77,5 @@ router.beforeEach((to, from, next) => {
     next();
   }
 });
-
 
 export default router;

@@ -1,11 +1,16 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
+import { useUserStore } from '@/stores/user';
 import { usePostsStore } from '@/stores/posts';
+import { useRouter } from 'vue-router';
+import { useLoginModalStore } from '@/stores/loginModal';
 import axiosInstance from '@/axios';
 import UserIcon from '@/assets/icons/icon_user.png';
-import { signInToFirebase } from '@/firebase';
 
+const userStore = useUserStore();
 const postsStore = usePostsStore();
+const loginModalStore = useLoginModalStore();
+const router = useRouter();
 const diaries = computed(() => postsStore.userPosts);
 const selectedDiary = ref(null);
 const displayCorrections = ref(false);
@@ -18,8 +23,12 @@ const correctionRequest = ref(false);
 const currentIndex = computed(() => diaries.value.findIndex(diary => diary.postId === selectedDiary.value.postId));
 
 onMounted(async () => {
-  await signInToFirebase();
-  await postsStore.fetchMyPosts();
+  if (userStore.user) {
+    await postsStore.fetchMyPosts();
+  } else {
+    // router.push('/home');
+    loginModalStore.openModal();
+  }
 });
 
 watch(

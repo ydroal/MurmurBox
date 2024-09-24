@@ -1,49 +1,20 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import { auth, signInToFirebase } from '@/firebase';
-import { getRedirectResult } from 'firebase/auth';
+// import { auth } from '@/firebase';
+// import { onAuthStateChanged } from 'firebase/auth';
+import { ref, computed, onMounted } from 'vue';
 import axiosInstance from '@/axios';
 import { useLoginModalStore } from '@/stores/loginModal';
 import LoginModal from '@/components/LoginModal.vue';
 import { useUserStore } from '@/stores/user';
-import { usePostsStore } from '@/stores/posts';
 
 const userStore = useUserStore();
 const isUserLoggedIn = computed(() => userStore.isLoggedIn);
-const postsStore = usePostsStore();
 
-// マウント時にリダイレクト結果を取得
-onMounted(() => {
-  getRedirectResult(auth)
-    .then(async result => {
-      if (result) {
-        try {
-          // result.userからIDトークンを取得
-          const googleIdToken = await result.user.getIdToken();
-
-          // バックエンドにIDトークンを送信
-          const res = await axiosInstance.post('/auth/google/validate', {
-            token: googleIdToken
-          });
-          console.log('レスポンスjwt', res.data.jwt);
-          userStore.user = res.data.user; // ユーザー情報を保存
-          userStore.lastVisitedEditMe = res.data.user.lastVisitedEditMe;
-          localStorage.setItem('jwt', res.data.jwt); // JWTトークンを保存
-          localStorage.setItem('googleIdToken', googleIdToken); // Cloud Storageへのアクセス用にGoogle IDトークンを保存
-
-          await signInToFirebase();
-
-          if (userStore.isLoggedIn) {
-            await postsStore.fetchPostsWithDetail(); // ログインが確認できたらポストデータをフェッチ
-          }
-        } catch (error) {
-          console.error('バックエンドへのトークン送信エラー:', error);
-        }
-      }
-    })
-    .catch(error => {
-      console.error('Google 認証エラー:', error);
-    });
+// onAuthStateChanged(auth, async user => {
+//   console.log('onAuthStateChanged triggered');
+// });
+onMounted(async () => {
+  console.log('リロード後にhome表示されたよ');
 });
 
 const loginModalStore = useLoginModalStore();

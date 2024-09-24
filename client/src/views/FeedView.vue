@@ -1,16 +1,16 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { usePostsStore } from '@/stores/posts';
-// import { useUserStore } from '@/stores/user';
+import { useUserStore } from '@/stores/user';
+import { useLoginModalStore } from '@/stores/loginModal';
 import axiosInstance from '@/axios';
 import PopupForm from '@/components/PopupForm.vue';
 import UserIcon from '@/assets/icons/icon_user.png';
-import { signInToFirebase } from '@/firebase';
 
+const userStore = useUserStore();
 const postsStore = usePostsStore();
+const loginModalStore = useLoginModalStore();
 const posts = computed(() => postsStore.allPosts);
-// const userStore = useUserStore();
-// const loginUser = computed(() => userStore.getUser);
 const displayComments = ref(false);
 const displayCorrections = ref(false);
 const comments = ref([]);
@@ -20,10 +20,12 @@ const currentMode = ref(null); // 'comment' または 'correction'
 const currentInputText = ref('');
 const selectedPostId = ref(null);
 
-// マウント時にpostsデータを取得
 onMounted(async () => {
-  await signInToFirebase();
-  await postsStore.fetchPostsWithDetail();
+  if (userStore.isLoggedIn) {
+    await postsStore.fetchPostsWithDetail();
+  } else {
+    loginModalStore.openModal();
+  }
 });
 
 const formatDate = dateStr => {

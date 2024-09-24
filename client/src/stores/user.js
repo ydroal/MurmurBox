@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import axiosInstance from '@/axios';
 import { auth, signOut } from '@/firebase';
+import { usePostsStore } from '@/stores/posts';
 
 export const useUserStore = defineStore({
   id: 'user',
@@ -8,7 +9,8 @@ export const useUserStore = defineStore({
     // ログインユーザー情報を保持
     user: null,
     redirectAfterLogin: null, // ログイン後にユーザーをリダイレクトするURL
-    lastVisitedEditMe: null
+    lastVisitedEditMe: null,
+    isInitialized: false // 認証状態が初期化されたかどうか
   }),
   getters: {
     isLoggedIn: state => !!state.user, // ログイン状態を表す。!!でBooleanに変換
@@ -32,9 +34,14 @@ export const useUserStore = defineStore({
           this.user = null;
           localStorage.removeItem('jwt');
         }
+      } else {
+        this.user = null;
       }
+      // 認証状態の初期化完了を設定
+      this.isInitialized = true;
     },
     logout() {
+      const postsStore = usePostsStore();
       // Firebase Authenticationからログアウトする
       signOut(auth)
         .then(() => {
@@ -42,6 +49,8 @@ export const useUserStore = defineStore({
           this.user = null;
           // ローカルストレージからJWTを削除
           localStorage.removeItem('jwt');
+          localStorage.removeItem('googleIdToken');
+          postsStore.resetPostState();
         })
         .catch(error => {
           console.error('ログアウトエラー:', error);

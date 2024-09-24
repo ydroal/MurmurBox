@@ -49,6 +49,9 @@ export const usePostsStore = defineStore({
       this.newRevisionCount = this.revisionRequestedPosts.filter(
         post => new Date(post.createdAt) > new Date(lastVisited)
       ).length;
+    },
+    resetPostState() {
+      this.$reset();
     }
   }
 });
