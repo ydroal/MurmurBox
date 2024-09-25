@@ -10,7 +10,6 @@ import { onAuthStateChanged } from 'firebase/auth';
 const userStore = useUserStore();
 
 onMounted(() => {
-  console.log('リロード処理開始');
   onAuthStateChanged(auth, async user => {
     if (user) {
       console.log('ユーザーが認識されました:', user);

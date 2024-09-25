@@ -64,11 +64,19 @@ router.post('/auth/google/validate', async (req, res) => {
 
     const jwtToken = generateJwtToken(userId);
 
+    // HttpOnly CookieにJWTを設定
+    res.cookie('jwt', jwtToken, {
+      httpOnly: true, // クライアント側のJavaScriptからはアクセス不可
+      secure: process.env.NODE_ENV === 'production', // HTTPS通信でのみ送信 (本番環境で有効)
+      sameSite: 'Strict', // CSRF攻撃を防ぐためのオプション
+      maxAge: 24 * 60 * 60 * 1000, // 1日（ミリ秒単位）
+    });
+
     // ユーザー情報とJWTトークンをクライアントに返す
     res.status(200).json({
       message: 'User validated',
       user: user.toJson(), // ユーザーデータをシリアライズして返す
-      jwt: jwtToken,
+      // jwt: jwtToken,
     });
   } catch (error) {
     console.error('Error validating user:', error);

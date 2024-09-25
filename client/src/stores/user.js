@@ -18,23 +18,13 @@ export const useUserStore = defineStore({
   },
   actions: {
     async checkUserFromToken() {
-      const token = localStorage.getItem('jwt');
-      if (token) {
-        try {
-          const res = await axiosInstance.get('/user/info', {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          });
-          this.user = res.data.user;
-          console.log('lastVisitedEditMe:', res.data.user.lastVisitedEditMe);
-          this.lastVisitedEditMe = res.data.user.lastVisitedEditMe ? new Date(res.data.user.lastVisitedEditMe) : null;
-        } catch (error) {
-          console.error('Failed to fetch user info:', error);
-          this.user = null;
-          localStorage.removeItem('jwt');
-        }
-      } else {
+      try {
+        const res = await axiosInstance.get('/user/info');
+        this.user = res.data.user;
+        console.log('lastVisitedEditMe:', res.data.user.lastVisitedEditMe);
+        this.lastVisitedEditMe = res.data.user.lastVisitedEditMe ? new Date(res.data.user.lastVisitedEditMe) : null;
+      } catch (error) {
+        console.error('Failed to fetch user info:', error);
         this.user = null;
       }
       // 認証状態の初期化完了を設定
@@ -45,11 +35,7 @@ export const useUserStore = defineStore({
       // Firebase Authenticationからログアウトする
       signOut(auth)
         .then(() => {
-          // ユーザーステートをnullに設定
-          this.user = null;
-          // ローカルストレージからJWTを削除
-          localStorage.removeItem('jwt');
-          localStorage.removeItem('googleIdToken');
+          this.$reset();
           postsStore.resetPostState();
         })
         .catch(error => {

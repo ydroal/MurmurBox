@@ -4,16 +4,15 @@ import axios from 'axios';
 
 // ベースURLの設定
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_APP_API_ENDPOINT
+  baseURL: import.meta.env.VITE_APP_API_ENDPOINT,
+  withCredentials: true // HttpOnly Cookieをリクエストに自動で含める
 });
 
 // axiosのデフォルト設定
 // インターセプターの設定
-axiosInstance.interceptors.request.use(config => {
-  const token = localStorage.getItem('jwt');
-  console.log('JWTトークン:', token); // トークンが正しいか確認
-  config.headers.Authorization = token ? `Bearer ${token}` : '';
-  return config;
-});
+// axiosInstance.interceptors.request.use(config => {
+//   console.log('リクエストが送信されました:', config);
+//   return config;
+// });
 
 export default axiosInstance;

@@ -2,6 +2,7 @@ const express = require('express');
 const admin = require('firebase-admin');
 // const serviceAccount = require('./path/to/your-service-account-file.json');
 const cors = require('cors');
+const cookieParser = require('cookie-parser'); 
 const app = express()
 const dotenv = require('dotenv');
 const port = 3000
@@ -14,6 +15,9 @@ app.use(cors({
 
 // JSONデータのパースを有効にする
 app.use(express.json());
+
+// cookie-parserの設定（これによりreq.cookiesにアクセス可能になる）
+app.use(cookieParser());
 
 // ルーティング設定
 app.get('/', (req, res) => {
