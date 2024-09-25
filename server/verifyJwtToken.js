@@ -4,9 +4,8 @@ const secretKey = process.env.JWT_SECRET;
 
 // JWTの検証
 const verifyJwtToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  console.log(authHeader);
-  const token = authHeader && authHeader.split(' ')[1]; // Bearerトークンの形式に対応
+  const token = req.cookies.jwt; // CookieからJWTを取得
+  console.log(token);
 
   if (!token) {
     // ゲストユーザーの場合はユーザー情報を設定せずに処理を続行

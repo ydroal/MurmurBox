@@ -2,7 +2,6 @@
 import { auth } from '@/firebase';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useLoginModalStore } from '@/stores/loginModal';
-// import axiosInstance from '@/axios';
 import axios from 'axios';
 import { useUserStore } from '@/stores/user';
 import { usePostsStore } from '@/stores/posts';
@@ -11,23 +10,6 @@ const loginModalStore = useLoginModalStore();
 const userStore = useUserStore();
 const postsStore = usePostsStore();
 
-// const handleGoogleLogin = () => {
-//   signInWithRedirect(auth, provider);
-// };
-// const handleGoogleLogin = async () => {
-//   try {
-//     const result = await signInWithPopup(auth, provider);
-//     if (result) {
-//       const googleIdToken = await result.user.getIdToken();
-//       // トークンをlocalStorageに保存して、すぐにリダイレクト
-//       // Cloud Storageへのアクセス用にGoogle IDトークンを保存
-//       localStorage.setItem('googleIdToken', googleIdToken);
-//       loginModalStore.closeModal();
-//     }
-//   } catch (error) {
-//     console.error('Google認証エラー:', error);
-//   }
-// };
 // Googleログイン処理
 const handleGoogleLogin = async () => {
   try {
@@ -36,11 +18,8 @@ const handleGoogleLogin = async () => {
       prompt: 'select_account' // 常にアカウント選択画面を表示
     });
 
-    console.log('Google認証ポップアップを表示開始');
-
     // Google認証ポップアップを表示
     const result = await signInWithPopup(auth, provider);
-    console.log('Google認証ポップアップからの結果', result);
 
     if (result) {
       // Google IDトークンを取得
@@ -48,24 +27,32 @@ const handleGoogleLogin = async () => {
       console.log(googleIdToken);
 
       // トークンをlocalStorageに保存
-      localStorage.setItem('googleIdToken', googleIdToken);
+      // localStorage.setItem('googleIdToken', googleIdToken);
 
       // まだJWTトークンがないので、axiosを直接使用
-      const res = await axios.post(`${import.meta.env.VITE_APP_API_ENDPOINT}/auth/google/validate`, {
-        token: googleIdToken
-      });
+      const res = await axios.post(
+        `${import.meta.env.VITE_APP_API_ENDPOINT}/auth/google/validate`,
+        {
+          token: googleIdToken
+        },
+        {
+          withCredentials: true // HttpOnly Cookieをサーバーに送信・受信するために必要
+        }
+      );
 
       // ユーザー情報を保存
       userStore.user = res.data.user;
-      localStorage.setItem('jwt', res.data.jwt);
+      // localStorage.setItem('jwt', res.data.jwt);
+
+      // JWTトークンはHttpOnly Cookieに保存されるため、フロントで確認する必要はない
+      console.log('ユーザー認証が完了しました');
 
       // 認証が完了したらデータをフェッチする
-      const jwtToken = localStorage.getItem('jwt');
-      if (jwtToken) {
-        console.log('JWTトークンが保存されました:', jwtToken);
+      try {
         await postsStore.fetchPostsWithDetail();
-      } else {
-        console.error('JWTトークンが保存されていません');
+        console.log('投稿データをフェッチしました');
+      } catch (error) {
+        console.error('投稿データのフェッチに失敗しました:', error);
       }
 
       // 認証が完了したらモーダルを閉じる
