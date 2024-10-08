@@ -509,16 +509,19 @@ const showPreviousDiary = () => {
         v-for="diary in diaries"
         :key="diary.id"
         class="flex justify-around w-1/2 pt-2 pb-0.5 text-center text-xs font-jp text-dark border-b border-dark"
+        data-testid="diaries"
       >
         <div class="flex-none w-2/5">
           <a href="#" @click.prevent="showDiaryContent(diary)">
-            <span class="expansion inline-block text-orange">{{ formatDate(diary.createdAt) }}</span>
+            <span class="expansion inline-block text-orange" data-testid="diary-date">
+              {{ formatDate(diary.createdAt) }}
+            </span>
           </a>
         </div>
         <div class="flex-none w-1/5">{{ diary.commentCount }}</div>
         <div class="flex-none w-1/5">{{ diary.correctionCount }}</div>
         <div class="flex-none w-1/5">
-          <button type="button" @click="deleteDiary(diary.postId)">
+          <button type="button" @click="deleteDiary(diary.postId)" data-testid="delete-button">
             <img src="@/assets/icons/icon_trash.svg" alt="trash" class="expansion w-5 h-5" />
           </button>
         </div>
@@ -563,12 +566,14 @@ const showPreviousDiary = () => {
           <span
             @click="showCorrections(selectedDiary.postId, selectedDiary.correctionCount)"
             class="ml-[0.5em] text-sm font-jp text-orange hover:text-orange-700 expansion"
+            data-testid="corrections-link"
           >
             添削 ({{ selectedDiary.correctionCount }})
           </span>
           <span
             @click="showComments(selectedDiary.postId, selectedDiary.commentCount)"
             class="ml-4 text-sm font-jp text-orange hover:text-orange-700 expansion"
+            data-testid="comments-link"
           >
             コメント ({{ selectedDiary.commentCount }})
           </span>
@@ -581,6 +586,7 @@ const showPreviousDiary = () => {
             v-for="correction in corrections"
             :key="correction.correctionId"
             class="flex justify-between w-1/2 py-6 px-4 mb-8 bg-white/50 rounded-3xl"
+            data-testid="correction-item"
           >
             <div class="flex items-center space-x-4">
               <!-- ユーザーアイコン -->
@@ -591,7 +597,7 @@ const showPreviousDiary = () => {
               />
               <!-- 添削内容 -->
               <div class="flex flex-col space-y-1">
-                <span class="font-bold text-dark">{{ correction.username }}</span>
+                <span class="font-bold text-dark" data-testid="corrector">{{ correction.username }}</span>
                 <span class="text-sm text-dark">{{ correction.content }}</span>
               </div>
             </div>
@@ -608,6 +614,7 @@ const showPreviousDiary = () => {
             v-for="comment in comments"
             :key="comment.commentId"
             class="flex justify-between w-1/2 py-6 px-4 mb-8 bg-white/50 rounded-3xl"
+            data-testid="comment-item"
           >
             <div class="flex items-center space-x-4">
               <!-- ユーザーアイコン -->
@@ -618,7 +625,7 @@ const showPreviousDiary = () => {
               />
               <!-- コメント内容 -->
               <div class="flex flex-col space-y-1">
-                <span class="font-bold text-dark">{{ comment.username }}</span>
+                <span class="font-bold text-dark" data-testid="commenter">{{ comment.username }}</span>
                 <span class="text-sm text-dark">{{ comment.content }}</span>
               </div>
             </div>

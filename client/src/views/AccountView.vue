@@ -6,7 +6,7 @@ import UserIcon from '@/assets/icons/icon_user.png';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const userStore = useUserStore();
-
+const fileInput = ref(null);
 let userInfo = ref({ username: '', email: '', profileImageUrl: '' });
 let initialUserInfo = ref({ username: '', email: '', profileImageUrl: '' });
 let editMode = ref(false); // 編集モードを管理するためのref
@@ -78,11 +78,12 @@ const update = async () => {
 
 // editModeの値が変わったときにファイル選択を有効/無効にする
 watch(editMode, newValue => {
-  const fileInput = document.getElementById('file-input');
-  if (newValue) {
-    fileInput.removeAttribute('disabled');
-  } else {
-    fileInput.setAttribute('disabled', 'disabled');
+  if (fileInput.value) {
+    if (newValue) {
+      fileInput.value.removeAttribute('disabled');
+    } else {
+      fileInput.value.setAttribute('disabled', 'disabled');
+    }
   }
 });
 </script>
@@ -93,7 +94,14 @@ watch(editMode, newValue => {
       class="bg-dark rounded-1 w-[600px] h-[400px] rounded-3xl relative flex flex-col items-center justify-center mt-4"
     >
       <div class="bg-white rounded-full w-28 h-28 absolute -top-14 truncate">
-        <input id="file-input" type="file" @change="onFileChange" :disabled="!editMode" class="hidden" />
+        <input
+          id="file-input"
+          ref="fileInput"
+          type="file"
+          @change="onFileChange"
+          :disabled="!editMode"
+          class="hidden"
+        />
         <div v-if="editMode && selectedFile">
           <img :src="previewImageUrl || userInfo.profileImageUrl || UserIcon" alt="Preview" class="object-contain" />
         </div>
@@ -115,6 +123,7 @@ watch(editMode, newValue => {
           :disabled="!editMode"
           v-if="userInfo"
           v-model="userInfo.username"
+          data-testid="username-input"
         />
       </div>
 
@@ -126,6 +135,7 @@ watch(editMode, newValue => {
           type="text"
           disabled
           v-model="userInfo.email"
+          data-testid="email-input"
         />
       </div>
       <div class="flex justify-end space-x-4 w-2/3 mt-3">
@@ -133,6 +143,7 @@ watch(editMode, newValue => {
           @click="edit"
           class="bg-orange text-ivory font-en w-16 h-10 rounded-xl hover:bg-orange-700"
           v-if="!editMode"
+          data-testid="edit-button"
         >
           Edit
         </button>
@@ -140,6 +151,7 @@ watch(editMode, newValue => {
           @click="update"
           class="bg-orange text-ivory font-en w-16 h-10 rounded-xl hover:bg-orange-700"
           v-if="editMode"
+          data-testid="update-button"
         >
           Update
         </button>

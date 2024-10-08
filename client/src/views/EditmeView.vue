@@ -203,6 +203,7 @@ const closePopup = () => {
             </div>
             <div
               class="read-more border-r border-ivory50 flex-1 container mx-auto p-3 pt-14 rounded-l-3xl h-72 leading-6 font-jp bg-dark text-ivory text-sm"
+              data-testid="jp_post"
             >
               <div id="scrollbar">
                 {{ post.jpText }}
@@ -216,6 +217,7 @@ const closePopup = () => {
             </div>
             <div
               class="border-r border-ivory50 flex-1 container mx-auto p-3 pt-14 rounded-r-3xl h-72 leading-6 font-jp bg-dark text-ivory text-sm"
+              data-testid="fr_post"
             >
               <div id="scrollbar">
                 {{ post.frText }}
@@ -242,6 +244,7 @@ const closePopup = () => {
           type="button"
           class="relative inline-flex items-center p-3"
           @click="togglePopup(post.postId, 'comment', post.commentCount)"
+          data-testid="comment-button"
         >
           <img src="@/assets/icons/icon_comment.svg" alt="My dico" class="w-5 h-5" aria-hidden="true" />
           <div
@@ -255,6 +258,7 @@ const closePopup = () => {
           type="button"
           class="relative inline-flex items-center p-3"
           @click="togglePopup(post.postId, 'correction', post.correctionCount)"
+          data-testid="correction-button"
         >
           <img src="@/assets/icons/icon_edited.svg" alt="My dico" class="w-5 h-5" aria-hidden="true" />
           <div
@@ -274,6 +278,7 @@ const closePopup = () => {
           v-for="comment in comments"
           :key="comment.commentId"
           class="flex justify-between w-1/2 py-6 px-4 mb-8 bg-white/50 rounded-3xl"
+          data-testid="comment-item"
         >
           <div class="flex items-center space-x-4">
             <!-- ユーザーアイコン -->
@@ -302,6 +307,7 @@ const closePopup = () => {
           v-for="correction in corrections"
           :key="correction.correctionId"
           class="flex justify-between w-1/2 py-6 px-4 mb-8 bg-white/50 rounded-3xl"
+          data-testid="correction-item"
         >
           <div class="flex items-center space-x-4">
             <!-- ユーザーアイコン -->
