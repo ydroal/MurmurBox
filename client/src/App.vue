@@ -10,6 +10,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 const userStore = useUserStore();
 
 onMounted(() => {
+  console.log('onMounted called');
   onAuthStateChanged(auth, async user => {
     if (user) {
       console.log('ユーザーが認識されました:', user);
@@ -18,7 +19,7 @@ onMounted(() => {
     } else {
       // ログアウト時の処理
       userStore.user = null;
-      localStorage.removeItem('jwt');
+      // トークンはHttpOnly Cookiesで保持するため不要 localStorage.removeItem('jwt');
     }
   });
 });
