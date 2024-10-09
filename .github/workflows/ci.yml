@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Set up Firebase Admin Key
+      run: |
+        echo "$FIREBASE_ADMIN_KEY_JSON" > firebaseAdminKey.json
+      env:
+        FIREBASE_ADMIN_KEY_JSON: ${{ secrets.FIREBASE_ADMIN_KEY_JSON }}
+
+    - name: Run tests
+      run: npm run test:unit
+
+    - name: Build project
+      run: npm run build
+
+    - name: Clean up Firebase Admin Key
+      run: rm firebaseAdminKey.json
