@@ -32,15 +32,22 @@ jobs:
 
     - name: Set up Firebase Admin Key
       run: |
-        echo "$FIREBASE_ADMIN_KEY_JSON" > firebaseAdminKey.json
+        mkdir -p server/config
+        echo "$FIREBASE_ADMIN_KEY_JSON" > server/config/firebaseAdminKey.json
       env:
         FIREBASE_ADMIN_KEY_JSON: ${{ secrets.FIREBASE_ADMIN_KEY_JSON }}
 
     - name: Run tests
+      working-directory: ./client
       run: npm run test:unit
 
-    - name: Build project
+    - name: Build client project
+      working-directory: ./client
+      run: npm run build
+
+    - name: Build server project
+      working-directory: ./server
       run: npm run build
 
     - name: Clean up Firebase Admin Key
-      run: rm firebaseAdminKey.json
+      run: rm server/config/firebaseAdminKey.json
