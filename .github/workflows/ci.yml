@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Install dependencies for client
+      working-directory: ./client
+      run: npm install
+
+    - name: Install dependencies for server
+      working-directory: ./server
+      run: npm install
+
+    - name: Set up Firebase Admin Key
+      run: |
+        mkdir -p server/config
+        echo "$FIREBASE_ADMIN_KEY_JSON" > server/config/firebaseAdminKey.json
+      env:
+        FIREBASE_ADMIN_KEY_JSON: ${{ secrets.FIREBASE_ADMIN_KEY_JSON }}
+
+    - name: Run tests
+      working-directory: ./client
+      env:
+        VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
+        VITE_AUTH_DOMAIN: ${{ vars.VITE_AUTH_DOMAIN }}
+        VITE_PROJECT_ID: ${{ vars.VITE_PROJECT_ID }}
+        VITE_STORAGE_BUCKET: ${{ vars.VITE_STORAGE_BUCKET }}
+        VITE_MESSAGING_SENDER_ID: ${{ vars.VITE_MESSAGING_SENDER_ID }}
+        VITE_APP_ID: ${{ vars.VITE_APP_ID }}
+        VITE_APP_API_ENDPOINT: ${{ vars.VITE_APP_API_ENDPOINT }}
+        VITE_APP_SOCKET_ENDPOINT: ${{ vars.VITE_APP_SOCKET_ENDPOINT }}
+      run: npm run test:unit
+
+    - name: Build client project
+      working-directory: ./client
+      run: npm run build
+
+    - name: Clean up Firebase Admin Key
+      run: rm server/config/firebaseAdminKey.json
