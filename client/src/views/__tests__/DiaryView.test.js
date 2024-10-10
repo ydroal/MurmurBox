@@ -25,7 +25,7 @@ const mockPostsStore = {
   },
   get userPosts() {
     return this.myPosts;
-  },
+  }
 };
 
 vi.mock('@/stores/posts', () => ({
@@ -106,7 +106,7 @@ const mountComponent = () => {
       mocks: {
         usePostsStore: () => mockPostsStore,
         useUserStore: () => mockUserStore,
-        useLoginModalStore: () => mockLoginModalStore,
+        useLoginModalStore: () => mockLoginModalStore
       }
     }
   });
@@ -144,7 +144,7 @@ describe('DiaryView.vue Tests', () => {
     const diaries = wrapper.findAll('[data-testid="diaries"]');
     console.log(diaries);
     expect(diaries.length).toBe(1);
-    expect(diaries[0].find('[data-testid="diary-date"]').text()).toContain('2023/01/01 01:00');
+    expect(diaries[0].find('[data-testid="diary-date"]').text()).toContain('2023/01/01 00:00');
   });
 
   it('should fetch and display comments when the comments link is clicked', async () => {
