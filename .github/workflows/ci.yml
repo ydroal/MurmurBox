@@ -54,9 +54,5 @@ jobs:
       working-directory: ./client
       run: npm run build
 
-    - name: Build server project
-      working-directory: ./server
-      run: npm run build
-
     - name: Clean up Firebase Admin Key
       run: rm server/config/firebaseAdminKey.json
