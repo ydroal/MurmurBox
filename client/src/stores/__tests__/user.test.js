@@ -4,9 +4,9 @@ vi.mock('@/axios');
 vi.mock('firebase/auth', () => ({
   __esModule: true,
   getAuth: vi.fn(() => ({
-    currentUser: { uid: 'user123' },
+    currentUser: { uid: 'user123' }
   })),
-  signOut: vi.fn(() => Promise.resolve()), // signOutをPromise.resolveでモック
+  signOut: vi.fn(() => Promise.resolve()) // signOutをPromise.resolveでモック
 }));
 
 vi.mock('@/stores/posts', () => {
@@ -18,14 +18,13 @@ vi.mock('@/stores/posts', () => {
   };
 });
 
-// 必要なモジュールをインポート
 import { flushPromises } from '@vue/test-utils';
 import { setActivePinia, createPinia } from 'pinia';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useUserStore } from '@/stores/user';
 import axiosInstance from '@/axios';
 import { auth, signOut } from '@/firebase';
-import { usePostsStore } from '@/stores/posts'; // モックされた usePostsStore をインポート
+import { usePostsStore } from '@/stores/posts'; // 先にモックされたusePostsStoreをインポート
 
 describe('User Store Tests', () => {
   let userStore;
