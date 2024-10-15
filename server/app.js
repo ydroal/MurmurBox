@@ -31,23 +31,22 @@ app.use(cookieParser());
 // 本番環境の場合のみ、dist/フォルダの静的ファイルを配信
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/dist')));
-
-  // ルーティング設定の前に静的ファイル配信設定を追加
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-  });
-} else {
-  // 開発環境の場合は、クライアントアプリはViteの開発サーバーが管理
-  console.log('development mode. Not use static files from dist');
 }
-
-// ルーティング設定
-app.get('/', (req, res) => {
-  res.send('Hello World!')
-})
 
 const routes = require('./routes'); // `routes.js`ファイルで定義されたルート群
 app.use('/api', routes); // APIエンドポイントのベースパスを指定
+
+  // ワイルドカードルートを APIルートの後に配置
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+  });
+}
+
+// ルーティング設定
+// app.get('/', (req, res) => {
+//   res.send('Hello World!')
+// })
 
 // サーバーの起動
 app.listen(port, () => {
