@@ -12,6 +12,6 @@
     "install-server": "cd server && npm install",
     "build": "npm run build-client",
     "build-client": "cd client && npm run build",
-    "start": "node server/index.js"
+    "start": "node server/app.js"
   }
 }
