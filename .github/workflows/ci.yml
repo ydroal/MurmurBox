@@ -50,9 +50,5 @@ jobs:
         VITE_APP_SOCKET_ENDPOINT: ${{ vars.VITE_APP_SOCKET_ENDPOINT }}
       run: npm run test:unit
 
-    - name: Build client project
-      working-directory: ./client
-      run: npm run build
-
     - name: Clean up Firebase Admin Key
       run: rm server/config/firebaseAdminKey.json
