@@ -287,7 +287,6 @@ const closePopup = () => {
       <div v-if="displayComments && selectedPostId === post.postId" class="flex flex-col items-center">
         <p class="font-jp text-dark text-sm font-semibold text-center mb-4">コメント</p>
         <!-- コメントリスト表示 -->
-        // eslint-disable-next-line prettier/prettier
         <div
           v-for="comment in comments"
           :key="comment.commentId"
