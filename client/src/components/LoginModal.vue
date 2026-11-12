@@ -24,7 +24,6 @@ const handleGoogleLogin = async () => {
     if (result) {
       // Google IDトークンを取得
       const googleIdToken = await result.user.getIdToken();
-      console.log(googleIdToken);
 
       // トークンをlocalStorageに保存
       // localStorage.setItem('googleIdToken', googleIdToken);

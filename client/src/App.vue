@@ -13,7 +13,6 @@ onMounted(() => {
   console.log('onMounted called');
   onAuthStateChanged(auth, async user => {
     if (user) {
-      console.log('ユーザーが認識されました:', user);
       // ログイン状態の復元
       await userStore.checkUserFromToken(); // ユーザートークンの確認を待機
     } else {

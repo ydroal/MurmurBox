@@ -29,7 +29,6 @@ function generateJwtToken(userId) {
 // ユーザー認証エンドポイント
 router.post('/auth/google/validate', async (req, res) => {
   const { token } = req.body;
-  console.log('Received ID token:', token);
   
   try {
     const decodedUser = await verifyGoogleToken(token);
@@ -41,7 +40,6 @@ router.post('/auth/google/validate', async (req, res) => {
     
     if (userDoc.exists) {
       // 既存ユーザーのデータを更新
-      console.log('User document exists:', userDoc.data());
       user = User.fromFirestore(userDoc);
       user.lastLogin = new Date();
       user.lastVisitedEditMe = user.lastVisitedEditMe || new Date(); // 既存ユーザーに新フィールドを初期化
@@ -155,7 +153,6 @@ router.post('/post', verifyJwtToken, async (req, res) => {
   try {
     const { jpText, frText, privacyLevel, revisionRequested } = req.body;
 
-    console.log('User:', req.user);
 
     // テキストを翻訳する
     const result = await translator.translateText(jpText, 'ja', 'fr', { split_sentences: 'nonewlines' });
@@ -393,7 +390,6 @@ router.put('/update-post-details', verifyJwtToken, async (req, res) => {
 // コメントの追加エンドポイント
 router.post('/comments', verifyJwtToken, async (req, res) => {
   console.log('コメント追加リクエスト来たー');
-  console.log(req.user.id);
 
   if (!req.user || !req.user.id) {
     return res.status(403).send({ message: 'Access forbidden for guest users' });
@@ -410,7 +406,6 @@ router.post('/comments', verifyJwtToken, async (req, res) => {
     // ユーザー情報を取得
     const userSnapshot = await db.collection('users').doc(req.user.id).get();
     const userData = userSnapshot.data();
-    console.log('userData:', userData);
 
     // 新しいコメントを作成
     const newComment = new Comment({
