@@ -1,6 +1,9 @@
 {
   "name": "vue-project",
   "version": "0.0.0",
+  "engines": {
+    "node": "24.x"
+  },
   "private": true,
   "type": "module",
   "scripts": {
