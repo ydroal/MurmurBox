@@ -44,12 +44,10 @@ const handleGoogleLogin = async () => {
       // localStorage.setItem('jwt', res.data.jwt);
 
       // JWTトークンはHttpOnly Cookieに保存されるため、フロントで確認する必要はない
-      console.log('ユーザー認証が完了しました');
 
       // 認証が完了したらデータをフェッチする
       try {
         await postsStore.fetchPostsWithDetail();
-        console.log('投稿データをフェッチしました');
       } catch (error) {
         console.error('投稿データのフェッチに失敗しました:', error);
       }

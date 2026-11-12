@@ -9,7 +9,6 @@ export const useLoginModalStore = defineStore({
   actions: {
     openModal() {
       this.isOpen = true;
-      console.log('Modal Opened:', this.isOpen); // ここでログを出力
     },
     closeModal() {
       this.$patch({ isOpen: false });

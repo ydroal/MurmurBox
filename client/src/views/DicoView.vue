@@ -10,11 +10,10 @@ const snackbarMessage = ref('');
 
 const addDico = async () => {
   try {
-    const res = await axiosInstance.post('/dico', {
+    await axiosInstance.post('/dico', {
       term: frWord.value,
       definition: jpWord.value
     });
-    console.log('Dico data added:', res.data);
     frWord.value = '';
     jpWord.value = '';
     snackbarMessage.value = '辞書が登録されました';

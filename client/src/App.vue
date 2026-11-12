@@ -10,7 +10,6 @@ import { onAuthStateChanged } from 'firebase/auth';
 const userStore = useUserStore();
 
 onMounted(() => {
-  console.log('onMounted called');
   onAuthStateChanged(auth, async user => {
     if (user) {
       // ログイン状態の復元

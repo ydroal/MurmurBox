@@ -1,7 +1,7 @@
 <script setup>
 // import { auth } from '@/firebase';
 // import { onAuthStateChanged } from 'firebase/auth';
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import axiosInstance from '@/axios';
 import { useLoginModalStore } from '@/stores/loginModal';
 import LoginModal from '@/components/LoginModal.vue';
@@ -13,9 +13,6 @@ const isUserLoggedIn = computed(() => userStore.isLoggedIn);
 // onAuthStateChanged(auth, async user => {
 //   console.log('onAuthStateChanged triggered');
 // });
-onMounted(async () => {
-  console.log('リロード後にhome表示されたよ');
-});
 
 const loginModalStore = useLoginModalStore();
 
@@ -45,7 +42,6 @@ const postDiary = async () => {
       privacyLevel: privacyLevel.value,
       revisionRequested: revisionRequested.value
     });
-    console.log('Diary data posted:', res.data);
     frText.value = res.data.frText;
     aiText.value = res.data.aiText;
     isPosted.value = true;

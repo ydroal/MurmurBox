@@ -1,23 +1,9 @@
 <script setup>
-import { watch, computed, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { usePostsStore } from '@/stores/posts';
 
 const postsStore = usePostsStore();
 const newRevisions = computed(() => postsStore.newRevisionCount);
-
-watch(
-  () => postsStore.newRevisionCount,
-  (newValue, oldValue) => {
-    console.log(`postsStore.newRevisionCount changed from ${oldValue} to ${newValue}`);
-  }
-);
-
-watch(
-  () => newRevisions.value,
-  (newValue, oldValue) => {
-    console.log(`newRevisions changed from ${oldValue} to ${newValue}`);
-  }
-);
 
 // ツールチップの表示状態を管理
 const showTooltip = ref(false);
