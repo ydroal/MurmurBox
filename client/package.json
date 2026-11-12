@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "op run --environment=bexefldsos52vyowfgy3eob4re -- vite",
     "build": "vite build",
     "preview": "vite preview",
     "test:unit": "vitest",
