@@ -20,3 +20,4 @@ server/config/*
 # Claude Code
 CLAUDE.md
 tasks/
+docs/
