@@ -29,7 +29,6 @@ function generateJwtToken(userId) {
 // ユーザー認証エンドポイント
 router.post('/auth/google/validate', async (req, res) => {
   const { token } = req.body;
-  console.log('Received ID token:', token);
   
   try {
     const decodedUser = await verifyGoogleToken(token);
@@ -41,7 +40,6 @@ router.post('/auth/google/validate', async (req, res) => {
     
     if (userDoc.exists) {
       // 既存ユーザーのデータを更新
-      console.log('User document exists:', userDoc.data());
       user = User.fromFirestore(userDoc);
       user.lastLogin = new Date();
       user.lastVisitedEditMe = user.lastVisitedEditMe || new Date(); // 既存ユーザーに新フィールドを初期化
@@ -86,7 +84,6 @@ router.post('/auth/google/validate', async (req, res) => {
 
 // ユーザー設定エンドポイント
 router.put('/user/update', verifyJwtToken, async (req, res) => {
-  console.log('updateリクエスト来た')
   try {
     // JWT からユーザー ID を取得
     const userId = req.user.id; // verifyJwtToken ミドルウェアにより req.user がセットされている
@@ -128,7 +125,6 @@ router.put('/user/update', verifyJwtToken, async (req, res) => {
 
 // ユーザー情報を取得するエンドポイント
 router.get('/user/info', verifyJwtToken, async (req, res) => {
-  console.log('fetchリクエスト来た')
   // verifyJwtTokenでreq.userがセットされているが、ゲストの場合は undefined
   if (!req.user || !req.user.id) {
     return res.status(403).send({ message: 'Access forbidden for guest users' });
@@ -155,7 +151,6 @@ router.post('/post', verifyJwtToken, async (req, res) => {
   try {
     const { jpText, frText, privacyLevel, revisionRequested } = req.body;
 
-    console.log('User:', req.user);
 
     // テキストを翻訳する
     const result = await translator.translateText(jpText, 'ja', 'fr', { split_sentences: 'nonewlines' });
@@ -179,7 +174,6 @@ router.post('/post', verifyJwtToken, async (req, res) => {
     });
     await newPost.save();
 
-    console.log('Post saved successfully');
     res.status(200).json({ message: 'Post saved successfully', frText, aiText });
    
 } catch (error) {
@@ -190,7 +184,6 @@ router.post('/post', verifyJwtToken, async (req, res) => {
 
 // Postsデータを取得するエンドポイント
 router.get('/posts', verifyJwtToken, async (req, res) => {
-  console.log('Postsのfetchリクエスト来た');
 
   // verifyJwtTokenでreq.userがセットされているが、ゲストの場合は undefined
   if (!req.user || !req.user.id) {
@@ -219,7 +212,6 @@ router.get('/posts', verifyJwtToken, async (req, res) => {
 
 // フィルタリングされたPostデータ（privacyLevel: false）とpostのユーザー情報を取得するエンドポイント
 router.get('/posts-with-details', verifyJwtToken, async (req, res) => {
-  console.log('Feed用Postsのfetchリクエスト来た');
 
   if (!req.user || !req.user.id) {
     return res.status(403).send({ message: 'Access forbidden for guest users' });
@@ -238,13 +230,11 @@ router.get('/posts-with-details', verifyJwtToken, async (req, res) => {
 
       const postsDetailedInfo = await Promise.all(postsSnapshot.docs.map(async (postDoc) => {
         const postData = postDoc.data();
-        console.log(postData.uid);
         const userSnapshot = await db.collection('users').doc(postData.uid).get();
         if (!userSnapshot.exists) {
           console.error(`ユーザードキュメントが見つかりません: ${postData.uid}`);
         };
         const user = userSnapshot.data();
-        console.log(`ユーザードキュメント取得成功: ${user.username}`);
   
         // コメント数をカウント
         const commentCountSnapshot = await db.collection('comments').where('postId', '==', postDoc.id).get();
@@ -252,7 +242,6 @@ router.get('/posts-with-details', verifyJwtToken, async (req, res) => {
         // 添削数をカウント
         const correctionCountSnapshot = await db.collection('corrections').where('postId', '==', postDoc.id).get();
         const correctionCount = correctionCountSnapshot.size; // 添削数
-        console.log('correctionCount:', correctionCount);
 
         // createdAtをISO 8601形式に変換
         const createdAt = new Date(postData.createdAt.seconds * 1000).toISOString();
@@ -277,7 +266,6 @@ router.get('/posts-with-details', verifyJwtToken, async (req, res) => {
 
 // 指定のpostIdのポストデータを取得するエンドポイント
 router.get('/post-details/:postId', verifyJwtToken, async (req, res) => {
-  console.log('個別Postのfetchリクエスト来た');
   
   if (!req.user || !req.user.id) {
     return res.status(403).send({ message: 'Access forbidden for guest users' });
@@ -320,7 +308,6 @@ router.get('/post-details/:postId', verifyJwtToken, async (req, res) => {
 
 // ログインユーザーの投稿を取得するAPIエンドポイント（Diaryページ用）
 router.get('/my-posts', verifyJwtToken, async (req, res) => {
-  console.log('Diary用Postsのfetchリクエスト来た');
 
   if (!req.user || !req.user.id) {
     return res.status(403).send({ message: 'Access forbidden for guest users' });
@@ -357,7 +344,6 @@ router.get('/my-posts', verifyJwtToken, async (req, res) => {
 
 // Postデータを更新するAPIエンドポイント
 router.put('/update-post-details', verifyJwtToken, async (req, res) => {
-  console.log('postデータ更新リクエスト来た');
 
   if (!req.user || !req.user.id) {
     return res.status(403).send({ message: 'Access forbidden for guest users' });
@@ -392,16 +378,12 @@ router.put('/update-post-details', verifyJwtToken, async (req, res) => {
 
 // コメントの追加エンドポイント
 router.post('/comments', verifyJwtToken, async (req, res) => {
-  console.log('コメント追加リクエスト来たー');
-  console.log(req.user.id);
 
   if (!req.user || !req.user.id) {
     return res.status(403).send({ message: 'Access forbidden for guest users' });
   }
 
   const { postId, content } = req.body;
-  console.log('postId:', postId);
-  console.log('content:', content);
   if (!postId || !content) {
     return res.status(400).send({ message: 'Post ID and content are required' });
   }
@@ -410,7 +392,6 @@ router.post('/comments', verifyJwtToken, async (req, res) => {
     // ユーザー情報を取得
     const userSnapshot = await db.collection('users').doc(req.user.id).get();
     const userData = userSnapshot.data();
-    console.log('userData:', userData);
 
     // 新しいコメントを作成
     const newComment = new Comment({
@@ -440,14 +421,12 @@ router.post('/comments', verifyJwtToken, async (req, res) => {
 
 // 特定のPostに紐づくコメントを取得
 router.get('/comments/:postId', verifyJwtToken, async (req, res) => {
-  console.log('コメントのfetchリクエスト来た');
 
   if (!req.user || !req.user.id) {
       return res.status(403).send({ message: 'Access forbidden for guest users' });
   }
 
   const postId = req.params.postId;
-  console.log('postId:', postId);
   try {
       const commentsSnapshot = await db.collection('comments').where('postId', '==', postId).get();
 
@@ -455,7 +434,6 @@ router.get('/comments/:postId', verifyJwtToken, async (req, res) => {
           let comment = doc.data();
           comment.createdAt = comment.createdAt.toDate();
           comment.updatedAt = comment.updatedAt.toDate();
-          console.log('コメント:', comment);
           return comment;
       });
       res.status(200).json({ comments: comments });
@@ -467,7 +445,6 @@ router.get('/comments/:postId', verifyJwtToken, async (req, res) => {
 
 // 添削の追加エンドポイント
 router.post('/corrections', verifyJwtToken, async (req, res) => {
-  console.log('添削追加リクエスト来たー');
   if (!req.user || !req.user.id) {
     return res.status(403).send({ message: 'Access forbidden for guest users' });
   }
@@ -511,14 +488,12 @@ router.post('/corrections', verifyJwtToken, async (req, res) => {
 
 // 特定のPostに紐づく添削を取得
 router.get('/corrections/:postId', verifyJwtToken, async (req, res) => {
-  console.log('添削のfetchリクエスト来た');
 
   if (!req.user || !req.user.id) {
       return res.status(403).send({ message: 'Access forbidden for guest users' });
   }
 
   const postId = req.params.postId;
-  console.log('postId:', postId);
   try {
     const correctionsSnapshot = await db.collection('corrections').where('postId', '==', postId).get();
 
@@ -526,7 +501,6 @@ router.get('/corrections/:postId', verifyJwtToken, async (req, res) => {
         let correction = doc.data();
         correction.createdAt = correction.createdAt.toDate();
         correction.updatedAt = correction.updatedAt.toDate();
-        console.log('添削:', correction);
         return correction;
     });
     res.status(200).json({ corrections: corrections });
@@ -538,7 +512,6 @@ router.get('/corrections/:postId', verifyJwtToken, async (req, res) => {
 
 // EditMeページへの最終訪問日をアップデートするエンドポイント
 router.put('/user/last-visit-editme', verifyJwtToken, async (req, res) => {
-  console.log('EditMeページへの最終訪問日をアップデートリクエスト来た');
 
   if (!req.user || !req.user.id) {
       return res.status(403).send({ message: 'Access forbidden for guest users' });
@@ -574,7 +547,6 @@ router.put('/user/last-visit-editme', verifyJwtToken, async (req, res) => {
 
 // Postを削除するエンドポイント
 router.delete('/delete-post/:postId', verifyJwtToken, async (req, res) => {
-  console.log('Post削除リクエストが来た');
 
   if (!req.user || !req.user.id) {
     return res.status(403).send({ message: 'Access forbidden for guest users' });
@@ -606,7 +578,6 @@ router.delete('/delete-post/:postId', verifyJwtToken, async (req, res) => {
 
 // 辞書データを追加するPOSTエンドポイント
 router.post('/dico', verifyJwtToken, async (req, res) => {
-  console.log('辞書登録リクエスト来たー');
 
   if (!req.user || !req.user.id) {
     return res.status(403).send({ message: 'Access forbidden for guest users' });

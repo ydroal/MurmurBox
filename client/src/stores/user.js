@@ -21,7 +21,6 @@ export const useUserStore = defineStore({
       try {
         const res = await axiosInstance.get('/user/info');
         this.user = res.data.user;
-        console.log('lastVisitedEditMe:', res.data.user.lastVisitedEditMe);
         this.lastVisitedEditMe = res.data.user.lastVisitedEditMe ? new Date(res.data.user.lastVisitedEditMe) : null;
       } catch (error) {
         console.error('Failed to fetch user info:', error);
@@ -46,7 +45,6 @@ export const useUserStore = defineStore({
       try {
         const res = await axiosInstance.put('/user/last-visit-editme');
         this.user = res.data.user; // レスポンスからユーザー情報を取得
-        console.log('lastVisitedEditMe:', res.data.user.lastVisitedEditMe);
         // クライアント側のステートを更新
         this.lastVisitedEditMe = new Date(res.data.user.lastVisitedEditMe);
       } catch (error) {

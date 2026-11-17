@@ -33,9 +33,10 @@ vi.mock('firebase/auth', () => ({
   getAuth: vi.fn(() => ({
     currentUser: { uid: '123' }
   })),
-  GoogleAuthProvider: vi.fn(() => ({
-    setCustomParameters: vi.fn()
-  })),
+  // vitest 4: a mock called with `new` must use `function`, not an arrow function
+  GoogleAuthProvider: vi.fn(function () {
+    return { setCustomParameters: vi.fn() };
+  }),
   signInWithPopup: vi.fn(() => {
     return Promise.resolve({
       user: {

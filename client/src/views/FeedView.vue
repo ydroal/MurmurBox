@@ -71,7 +71,6 @@ const timeSince = date => {
 const fetchCommentsForPost = async postId => {
   try {
     const res = await axiosInstance.get(`/comments/${postId}`);
-    console.log('コメント:', res.data.comments);
     comments.value = res.data.comments;
   } catch (error) {
     console.error(`Failed to fetch comments ${postId}:`, error);
@@ -81,9 +80,7 @@ const fetchCommentsForPost = async postId => {
 
 const fetchCorrectionsForPost = async postId => {
   try {
-    console.log('添削をフェッチするよ');
     const res = await axiosInstance.get(`/corrections/${postId}`);
-    console.log('添削:', res.data.corrections);
     corrections.value = res.data.corrections;
   } catch (error) {
     console.error(`Failed to fetch corrections ${postId}:`, error);
@@ -122,10 +119,7 @@ const updateSpecificPostDetails = async postId => {
 // };
 
 const togglePopup = async (postId, mode, count) => {
-  console.log(`postId:`, postId);
-  console.log(`selectedPostId:`, selectedPostId.value);
   if (selectedPostId.value === postId && currentMode.value === mode) {
-    console.log('Closing popup for the same post and mode.');
     if (mode === 'comment') {
       isPopupVisible.value = !displayComments.value;
       displayComments.value = !displayComments.value;
@@ -134,7 +128,6 @@ const togglePopup = async (postId, mode, count) => {
       displayCorrections.value = !displayCorrections.value;
     }
   } else {
-    console.log('Opening popup for a new post or mode.');
     currentMode.value = mode;
     selectedPostId.value = postId;
     isPopupVisible.value = true;

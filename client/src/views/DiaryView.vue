@@ -103,7 +103,6 @@ const timeSince = date => {
 
 const deleteDiary = async postId => {
   try {
-    console.log('postId:', postId);
     await axiosInstance.delete(`/delete-post/${postId}`);
     alert('日記は削除されました');
     await postsStore.fetchMyPosts(); // 再フェッチ
@@ -114,11 +113,8 @@ const deleteDiary = async postId => {
 
 const fetchCommentsForPost = async postId => {
   try {
-    console.log('フェッチ関数呼ばれた');
-    console.log('postId:', postId);
     const res = await axiosInstance.get(`/comments/${postId}`);
     comments.value = res.data.comments;
-    console.log('コメント:', comments.value);
   } catch (error) {
     console.error(`Failed to fetch comments ${postId}:`, error);
     comments.value = [];
@@ -127,9 +123,7 @@ const fetchCommentsForPost = async postId => {
 
 const fetchCorrectionsForPost = async postId => {
   try {
-    console.log('添削をフェッチするよ');
     const res = await axiosInstance.get(`/corrections/${postId}`);
-    console.log('添削:', res.data.corrections);
     corrections.value = res.data.corrections;
   } catch (error) {
     console.error(`Failed to fetch corrections ${postId}:`, error);
@@ -164,16 +158,13 @@ const updatePrivacyLevel = async () => {
       postId: selectedDiary.value.postId,
       updates: updates
     });
-    console.log('Post updated successfully:', res.data);
 
     const updatedPrivacyLevel = res.data.privacyLevel;
     const myPostsIndex = postsStore.userPosts.findIndex(post => post.postId === selectedDiary.value.postId);
-    console.log('myPostsIndex:', myPostsIndex);
     if (myPostsIndex !== -1) {
       postsStore.userPosts[myPostsIndex].privacyLevel = updatedPrivacyLevel;
     }
     const allPostsIndex = postsStore.allPosts.findIndex(post => post.postId === selectedDiary.value.postId);
-    console.log('allPostsIndex:', allPostsIndex);
     if (allPostsIndex !== -1) {
       postsStore.allPosts[allPostsIndex].privacyLevel = updatedPrivacyLevel;
     }
@@ -189,16 +180,13 @@ const updateCorrectionRequest = async () => {
       postId: selectedDiary.value.postId,
       updates: updates
     });
-    console.log('Correction request updated successfully:', res.data);
 
     const updatedRevisionRequested = res.data.revisionRequested;
     const myPostsIndex = postsStore.userPosts.findIndex(post => post.postId === selectedDiary.value.postId);
-    console.log('myPostsIndex:', myPostsIndex);
     if (myPostsIndex !== -1) {
       postsStore.userPosts[myPostsIndex].revisionRequested = updatedRevisionRequested;
     }
     const allPostsIndex = postsStore.allPosts.findIndex(post => post.postId === selectedDiary.value.postId);
-    console.log('allPostsIndex:', allPostsIndex);
     if (allPostsIndex !== -1) {
       postsStore.allPosts[allPostsIndex].revisionRequested = updatedRevisionRequested;
     }
@@ -211,8 +199,6 @@ const showNextDiary = () => {
   const nextIndex = currentIndex.value - 1;
   if (nextIndex >= 0 && nextIndex < diaries.value.length) {
     selectedDiary.value = diaries.value[nextIndex];
-  } else {
-    console.log('新しい日記はありません');
   }
 };
 
@@ -220,8 +206,6 @@ const showPreviousDiary = () => {
   const previousIndex = currentIndex.value + 1;
   if (previousIndex < diaries.value.length) {
     selectedDiary.value = diaries.value[previousIndex];
-  } else {
-    console.log('古い日記はありません');
   }
 };
 </script>

@@ -5,7 +5,6 @@ const secretKey = process.env.JWT_SECRET;
 // JWTの検証
 const verifyJwtToken = (req, res, next) => {
   const token = req.cookies.jwt; // CookieからJWTを取得
-  console.log(token);
 
   if (!token) {
     // ゲストユーザーの場合はユーザー情報を設定せずに処理を続行
@@ -16,7 +15,6 @@ const verifyJwtToken = (req, res, next) => {
     if (err) {
       return res.status(401).send({ message: 'Failed to authenticate token.' });
     }
-    console.log('Authenticated user:', user);  // ユーザー情報をログ出力
     // ユーザー情報をreq.userに保存
     req.user = user;
     next();
