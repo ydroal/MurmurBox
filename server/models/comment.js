@@ -1,4 +1,4 @@
-const { db, admin } = require('../firebaseAdmin');
+const { db } = require('../firebaseAdmin');
 
 class Comment {
   constructor({ commentId, postId, uid, username, content, createdAt, updatedAt, profileImageUrl }) {

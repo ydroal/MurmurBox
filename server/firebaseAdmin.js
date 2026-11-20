@@ -1,4 +1,5 @@
-const admin = require('firebase-admin');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestore');
 const fs = require('fs');
 const path = require('path');
 // const serviceAccount = require('./config/firebaseAdminKey.json');
@@ -31,13 +32,14 @@ if (process.env.FIREBASE_ADMIN_KEY_JSON) {
 }
 
 // Initialize the Firebase Admin SDK
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+initializeApp({
+  credential: cert(serviceAccount),
 });
 
-const db = admin.firestore();
+const db = getFirestore();
 
 module.exports = {
-  admin,
-  db
+  db,
+  FieldValue,
+  Timestamp
 };

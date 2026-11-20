@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const deepl = require('deepl-node');
 const verifyGoogleToken = require('./verifyGoogleToken'); 
 const verifyJwtToken = require('./verifyJwtToken'); 
-const { db, admin } = require('./firebaseAdmin');
+const { db, FieldValue } = require('./firebaseAdmin');
 const User = require('./models/user');
 const Post = require('./models/post');
 const Comment = require('./models/comment');
@@ -409,7 +409,7 @@ router.post('/comments', verifyJwtToken, async (req, res) => {
     // Postモデルの comments 配列に新しいコメントIDを追加
     const postRef = db.collection('posts').doc(postId);
     await postRef.update({
-      comments: admin.firestore.FieldValue.arrayUnion(commentId)
+      comments: FieldValue.arrayUnion(commentId)
     });
 
     res.status(201).json(newComment.toJson());
@@ -476,7 +476,7 @@ router.post('/corrections', verifyJwtToken, async (req, res) => {
     // Postモデルのrevisions配列に新しいコメントIDを追加
     const postRef = db.collection('posts').doc(postId);
     await postRef.update({
-      revisions: admin.firestore.FieldValue.arrayUnion(correctionId)
+      revisions: FieldValue.arrayUnion(correctionId)
     });
 
     res.status(201).json(newCorrection.toJson());

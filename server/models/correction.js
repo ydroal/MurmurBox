@@ -1,4 +1,4 @@
-const { db, admin } = require('../firebaseAdmin');
+const { db, Timestamp } = require('../firebaseAdmin');
 
 class Correction {
   constructor({ correctionId, postId, uid, username, content, createdAt, updatedAt, profileImageUrl }) {
@@ -43,8 +43,8 @@ class Correction {
       uid: this.uid,
       username: this.username,
       content: this.content,
-      createdAt: this.createdAt instanceof admin.firestore.Timestamp ? this.createdAt.toDate().toISOString() : this.createdAt,
-      updatedAt: this.updatedAt instanceof admin.firestore.Timestamp ? this.updatedAt.toDate().toISOString() : this.updatedAt,
+      createdAt: this.createdAt instanceof Timestamp ? this.createdAt.toDate().toISOString() : this.createdAt,
+      updatedAt: this.updatedAt instanceof Timestamp ? this.updatedAt.toDate().toISOString() : this.updatedAt,
       profileImageUrl: this.profileImageUrl,
     };
     if (this.correctionId) {
