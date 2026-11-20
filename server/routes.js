@@ -11,6 +11,8 @@ const Comment = require('./models/comment');
 const Correction = require('./models/correction');
 const Dico = require('./models/dico');
 const { MAX_CONTENT_LENGTH, normalizeText } = require('./validators');
+const clientIp = require('./clientIp');
+const { consumeGuestQuota } = require('./guestQuota');
 
 const authKey = process.env.DEEPL_API_KEY;
 const translator = new deepl.Translator(authKey);
@@ -162,6 +164,25 @@ router.post('/post', verifyJwtToken, async (req, res) => {
   try {
     const { jpText, frText, privacyLevel, revisionRequested } = req.body;
 
+    // 文字数の上限(DeepL の利用量を抑える)
+    if (
+      typeof jpText !== 'string' || jpText.trim().length === 0 || jpText.length > MAX_CONTENT_LENGTH ||
+      typeof frText !== 'string' || frText.length > MAX_CONTENT_LENGTH
+    ) {
+      return res.status(400).json({ error: `jpText (1-${MAX_CONTENT_LENGTH} characters) and frText (up to ${MAX_CONTENT_LENGTH} characters) are required` });
+    }
+
+    // ゲストは IP ごと・全体の上限を確認してから翻訳する
+    if (!req.user) {
+      const ip = clientIp.getClientIp(req);
+      if (!ip) {
+        return res.status(403).json({ error: 'Cannot identify the client' });
+      }
+      const quota = await consumeGuestQuota(ip, jpText.length);
+      if (!quota.ok) {
+        return res.status(429).json({ error: 'Too many translation requests. Please log in or try again later.' });
+      }
+    }
 
     // テキストを翻訳する
     const result = await translator.translateText(jpText, 'ja', 'fr', { split_sentences: 'nonewlines' });
