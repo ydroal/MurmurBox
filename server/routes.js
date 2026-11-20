@@ -36,6 +36,9 @@ function generateJwtToken(userId) {
   return jwt.sign(payload, jwtSecret, { expiresIn: '1d' }); // 有効期限を1日とする
 }
 
+// 作者のユーザーが存在しないときの表示用
+const DELETED_USER = { username: '退会したユーザー', profileImageUrl: '' };
+
 // 閲覧できる投稿を返す。存在しない、または非公開で本人以外の場合は null(呼び出し側で 404 にする)
 async function getReadablePost(postId, userId) {
   if (typeof postId !== 'string' || !postId || postId.includes('/')) return null;
@@ -251,17 +254,12 @@ router.get('/posts-with-details', verifyJwtToken, async (req, res) => {
       .orderBy('createdAt', 'desc')
       .get(); //getはPromiseを返しawaitで結果をpostsSnapshotに格納
 
-    if (postsSnapshot.empty) {
-      return res.status(404).json({ message: 'No posts found' });
-    }
-
+    // 0 件のときは空配列を返す
       const postsDetailedInfo = await Promise.all(postsSnapshot.docs.map(async (postDoc) => {
         const postData = postDoc.data();
         const userSnapshot = await db.collection('users').doc(postData.uid).get();
-        if (!userSnapshot.exists) {
-          console.error(`ユーザードキュメントが見つかりません: ${postData.uid}`);
-        };
-        const user = userSnapshot.data();
+        // 作者が存在しない(退会済みなど)場合も、投稿は返す
+        const user = userSnapshot.exists ? userSnapshot.data() : DELETED_USER;
   
         // コメント数をカウント
         const commentCountSnapshot = await db.collection('comments').where('postId', '==', postDoc.id).get();
@@ -307,7 +305,7 @@ router.get('/post-details/:postId', verifyJwtToken, async (req, res) => {
     }
 
     const userSnapshot = await db.collection('users').doc(postData.uid).get();
-    const user = userSnapshot.data();
+    const user = userSnapshot.exists ? userSnapshot.data() : DELETED_USER;
 
     const commentCountSnapshot = await db.collection('comments').where('postId', '==', postId).get();
     const commentCount = commentCountSnapshot.size;
