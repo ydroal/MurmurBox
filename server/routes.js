@@ -26,6 +26,16 @@ function generateJwtToken(userId) {
   return jwt.sign(payload, jwtSecret, { expiresIn: '1d' }); // 有効期限を1日とする
 }
 
+// 閲覧できる投稿を返す。存在しない、または非公開で本人以外の場合は null(呼び出し側で 404 にする)
+async function getReadablePost(postId, userId) {
+  if (typeof postId !== 'string' || !postId || postId.includes('/')) return null;
+  const postDoc = await db.collection('posts').doc(postId).get();
+  if (!postDoc.exists) return null;
+  const postData = postDoc.data();
+  if (postData.privacyLevel === true && postData.uid !== userId) return null;
+  return postData;
+}
+
 // ユーザー認証エンドポイント
 router.post('/auth/google/validate', async (req, res) => {
   const { token } = req.body;
@@ -245,13 +255,12 @@ router.get('/post-details/:postId', verifyJwtToken, async (req, res) => {
   
   const postId = req.params.postId;
   try {
-    const postDoc = await db.collection('posts').doc(postId).get();
+    const postData = await getReadablePost(postId, req.user.id);
 
-    if (!postDoc.exists) {
+    if (!postData) {
       return res.status(404).send({ message: 'Post not found' });
     }
 
-    const postData = postDoc.data();
     const userSnapshot = await db.collection('users').doc(postData.uid).get();
     const user = userSnapshot.data();
 
@@ -261,7 +270,7 @@ router.get('/post-details/:postId', verifyJwtToken, async (req, res) => {
     const correctionCountSnapshot = await db.collection('corrections').where('postId', '==', postId).get();
     const correctionCount = correctionCountSnapshot.size;
 
-    const createdAt = new Date(postData.createdAt);
+    const createdAt = postData.createdAt.toDate().toISOString();
 
     res.status(200).json({
       ...postData,
@@ -411,6 +420,9 @@ router.get('/comments/:postId', verifyJwtToken, async (req, res) => {
 
   const postId = req.params.postId;
   try {
+      if (!(await getReadablePost(postId, req.user.id))) {
+        return res.status(404).send({ message: 'Post not found' });
+      }
       const commentsSnapshot = await db.collection('comments').where('postId', '==', postId).get();
 
       const comments = commentsSnapshot.empty ? [] : commentsSnapshot.docs.map(doc => {
@@ -478,6 +490,9 @@ router.get('/corrections/:postId', verifyJwtToken, async (req, res) => {
 
   const postId = req.params.postId;
   try {
+    if (!(await getReadablePost(postId, req.user.id))) {
+      return res.status(404).send({ message: 'Post not found' });
+    }
     const correctionsSnapshot = await db.collection('corrections').where('postId', '==', postId).get();
 
     const corrections = correctionsSnapshot.empty ? [] : correctionsSnapshot.docs.map(doc => {
