@@ -21,13 +21,25 @@ class Post {
     await docRef.update({ postId: postId }); // postIdを追加
   }
 
-  // Postデータの削除
+  // Postデータの削除(紐づくコメントと添削も同じ batch で削除する。失敗したら例外を上げる)
   async deletePost() {
-      try {
-        await db.collection('posts').doc(this.postId).delete();
-      } catch (error) {
-        console.error('投稿の削除中にエラーが発生しました:', error);
-      }
+    const [comments, corrections] = await Promise.all([
+      db.collection('comments').where('postId', '==', this.postId).get(),
+      db.collection('corrections').where('postId', '==', this.postId).get()
+    ]);
+
+    // batch の上限(500 件)を超える場合は分けて削除する。投稿は最後の batch で、残りのコメント・添削と一緒に削除する
+    const refs = [...comments.docs, ...corrections.docs].map(doc => doc.ref);
+    const BATCH_SIZE = 490;
+    while (refs.length > BATCH_SIZE) {
+      const batch = db.batch();
+      refs.splice(0, BATCH_SIZE).forEach(ref => batch.delete(ref));
+      await batch.commit();
+    }
+    const lastBatch = db.batch();
+    refs.forEach(ref => lastBatch.delete(ref));
+    lastBatch.delete(db.collection('posts').doc(this.postId));
+    await lastBatch.commit();
   }
 
   // FirestoreのDocumentSnapshotからPostインスタンスを生成
