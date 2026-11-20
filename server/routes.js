@@ -10,6 +10,7 @@ const Post = require('./models/post');
 const Comment = require('./models/comment');
 const Correction = require('./models/correction');
 const Dico = require('./models/dico');
+const { MAX_CONTENT_LENGTH, normalizeText } = require('./validators');
 
 const authKey = process.env.DEEPL_API_KEY;
 const translator = new deepl.Translator(authKey);
@@ -368,25 +369,34 @@ router.put('/update-post-details', verifyJwtToken, async (req, res) => {
   }
 });
 
-// コメントの追加エンドポイント
-router.post('/comments', verifyJwtToken, async (req, res) => {
-
+// コメント・添削の追加(作成と投稿への ID 追加を 1 回の batch で行う)
+async function addPostReply(req, res, { collection, arrayField, Model, idKey, errorMessage }) {
   if (!req.user || !req.user.id) {
     return res.status(403).send({ message: 'Access forbidden for guest users' });
   }
 
-  const { postId, content } = req.body;
-  if (!postId || !content) {
-    return res.status(400).send({ message: 'Post ID and content are required' });
+  const { postId } = req.body;
+  const content = normalizeText(req.body.content, MAX_CONTENT_LENGTH);
+  if (!postId || typeof postId !== 'string' || content === null) {
+    return res.status(400).send({
+      message: `Post ID and content (1-${MAX_CONTENT_LENGTH} characters) are required`
+    });
   }
 
   try {
+    // 存在しない、または非公開で本人以外の投稿には書き込めない
+    if (!(await getReadablePost(postId, req.user.id))) {
+      return res.status(404).send({ message: 'Post not found' });
+    }
+
     // ユーザー情報を取得
     const userSnapshot = await db.collection('users').doc(req.user.id).get();
+    if (!userSnapshot.exists) {
+      return res.status(404).send({ message: 'User not found' });
+    }
     const userData = userSnapshot.data();
 
-    // 新しいコメントを作成
-    const newComment = new Comment({
+    const item = new Model({
       postId,
       uid: req.user.id,
       username: userData.username,
@@ -395,21 +405,32 @@ router.post('/comments', verifyJwtToken, async (req, res) => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    await newComment.save();
-    const commentId = newComment.commentId;
 
-    // Postモデルの comments 配列に新しいコメントIDを追加
-    const postRef = db.collection('posts').doc(postId);
-    await postRef.update({
-      comments: FieldValue.arrayUnion(commentId)
-    });
+    // ドキュメントの作成と、投稿の配列への ID 追加を同時に行う
+    const itemRef = db.collection(collection).doc();
+    const batch = db.batch();
+    batch.set(itemRef, item.toJson());
+    batch.update(db.collection('posts').doc(postId), { [arrayField]: FieldValue.arrayUnion(itemRef.id) });
+    await batch.commit();
 
-    res.status(201).json(newComment.toJson());
+    item[idKey] = itemRef.id;
+    res.status(201).json(item.toJson());
   } catch (error) {
-    console.error('コメントの追加に失敗しました:', error);
-    res.status(500).send({ message: 'コメントの追加に失敗しました' });
+    console.error(`${errorMessage}:`, error);
+    res.status(500).send({ message: errorMessage });
   }
-});
+}
+
+// コメントの追加エンドポイント
+router.post('/comments', verifyJwtToken, (req, res) =>
+  addPostReply(req, res, {
+    collection: 'comments',
+    arrayField: 'comments',
+    Model: Comment,
+    idKey: 'commentId',
+    errorMessage: 'コメントの追加に失敗しました'
+  })
+);
 
 // 特定のPostに紐づくコメントを取得
 router.get('/comments/:postId', verifyJwtToken, async (req, res) => {
@@ -439,47 +460,15 @@ router.get('/comments/:postId', verifyJwtToken, async (req, res) => {
 });
 
 // 添削の追加エンドポイント
-router.post('/corrections', verifyJwtToken, async (req, res) => {
-  if (!req.user || !req.user.id) {
-    return res.status(403).send({ message: 'Access forbidden for guest users' });
-  }
-
-  const { postId, content } = req.body;
-  if (!postId || !content) {
-    return res.status(400).send({ message: 'Post ID and content are required' });
-  }
-
-  try {
-    // ユーザー情報を取得
-    const userSnapshot = await db.collection('users').doc(req.user.id).get();
-    const userData = userSnapshot.data();
-
-    // 新しい添削を作成
-    const newCorrection = new Correction({
-      postId,
-      uid: req.user.id,
-      username: userData.username,
-      profileImageUrl: userData.profileImageUrl,
-      content,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    await newCorrection.save();
-    const correctionId = newCorrection.correctionId;
-
-    // Postモデルのrevisions配列に新しいコメントIDを追加
-    const postRef = db.collection('posts').doc(postId);
-    await postRef.update({
-      revisions: FieldValue.arrayUnion(correctionId)
-    });
-
-    res.status(201).json(newCorrection.toJson());
-  } catch (error) {
-    console.error('添削の追加に失敗しました:', error);
-    res.status(500).send({ message: '添削の追加に失敗しました' });
-  }
-});
+router.post('/corrections', verifyJwtToken, (req, res) =>
+  addPostReply(req, res, {
+    collection: 'corrections',
+    arrayField: 'revisions',
+    Model: Correction,
+    idKey: 'correctionId',
+    errorMessage: '添削の追加に失敗しました'
+  })
+);
 
 // 特定のPostに紐づく添削を取得
 router.get('/corrections/:postId', verifyJwtToken, async (req, res) => {
