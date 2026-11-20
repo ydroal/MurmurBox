@@ -10,4 +10,15 @@ function normalizeText(value, max) {
   return trimmed;
 }
 
-module.exports = { MAX_CONTENT_LENGTH, normalizeText };
+const MAX_USERNAME_LENGTH = 30;
+const MAX_URL_LENGTH = 2048;
+
+// プロフィール画像の URL は、本人のフォルダ(profile_images/{uid}/)の Firebase Storage の URL だけ許可する。
+// バケット名は環境変数 FIREBASE_STORAGE_BUCKET で受け取る。未設定なら全て拒否する。
+function isOwnProfileImageUrl(url, uid, bucket) {
+  if (typeof url !== 'string' || url.length > MAX_URL_LENGTH || !bucket || !uid) return false;
+  const prefix = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/profile_images%2F${encodeURIComponent(uid)}%2F`;
+  return url.startsWith(prefix) && url.length > prefix.length;
+}
+
+module.exports = { MAX_CONTENT_LENGTH, MAX_USERNAME_LENGTH, normalizeText, isOwnProfileImageUrl };

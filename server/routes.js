@@ -10,7 +10,7 @@ const Post = require('./models/post');
 const Comment = require('./models/comment');
 const Correction = require('./models/correction');
 const Dico = require('./models/dico');
-const { MAX_CONTENT_LENGTH, normalizeText } = require('./validators');
+const { MAX_CONTENT_LENGTH, MAX_USERNAME_LENGTH, normalizeText, isOwnProfileImageUrl } = require('./validators');
 const clientIp = require('./clientIp');
 const { consumeGuestQuota } = require('./guestQuota');
 
@@ -99,11 +99,11 @@ router.post('/auth/google/validate', async (req, res) => {
 router.put('/user/update', verifyJwtToken, async (req, res) => {
   try {
     // JWT からユーザー ID を取得
-    const userId = req.user.id; // verifyJwtToken ミドルウェアにより req.user がセットされている
-
-    if (!userId) {
+    // ゲストの場合は req.user が undefined
+    if (!req.user || !req.user.id) {
       return res.status(403).send({ message: 'Access forbidden for guest users' });
     }
+    const userId = req.user.id; // verifyJwtToken ミドルウェアにより req.user がセットされている
 
     // Firestore からユーザーデータを取得
     const userDoc = await db.collection('users').doc(userId).get();
@@ -118,8 +118,20 @@ router.put('/user/update', verifyJwtToken, async (req, res) => {
     // リクエストから新しいデータを取得
     const { username, profileImageUrl } = req.body;
 
+    // 指定された項目だけ検証する(未指定なら今の値を保つ)
+    let newUsername = user.username;
+    if (username !== undefined) {
+      newUsername = normalizeText(username, MAX_USERNAME_LENGTH);
+      if (newUsername === null) {
+        return res.status(400).send({ message: `username must be 1-${MAX_USERNAME_LENGTH} characters` });
+      }
+    }
+    if (profileImageUrl !== undefined && !isOwnProfileImageUrl(profileImageUrl, userId, process.env.FIREBASE_STORAGE_BUCKET)) {
+      return res.status(400).send({ message: 'profileImageUrl must be an image uploaded to your own profile folder' });
+    }
+
     // ユーザーデータを更新
-    user.username = username || user.username;
+    user.username = newUsername;
     user.profileImageUrl = profileImageUrl || user.profileImageUrl;
     user.lastLogin = new Date(); // 最終ログイン日を更新
 

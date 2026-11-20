@@ -16,3 +16,4 @@ process.env.FIREBASE_ADMIN_KEY_JSON = JSON.stringify({
 process.env.JWT_SECRET = 'test-secret';
 process.env.DEEPL_API_KEY = 'test-key';
 process.env.NODE_ENV = 'test';
+process.env.FIREBASE_STORAGE_BUCKET = 'demo-murmurbox.appspot.com';
