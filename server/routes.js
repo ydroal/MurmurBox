@@ -343,6 +343,7 @@ router.get('/my-posts', verifyJwtToken, async (req, res) => {
 });
 
 // Postデータを更新するAPIエンドポイント
+const UPDATABLE_POST_FIELDS = ['privacyLevel', 'revisionRequested'];
 router.put('/update-post-details', verifyJwtToken, async (req, res) => {
 
   if (!req.user || !req.user.id) {
@@ -351,15 +352,25 @@ router.put('/update-post-details', verifyJwtToken, async (req, res) => {
 
   const { postId, updates } = req.body;
 
-  if (!postId || !updates || typeof updates !== 'object') {
+  if (!postId || typeof postId !== 'string' || !updates || typeof updates !== 'object' || Array.isArray(updates)) {
     return res.status(400).json({ message: 'Post ID and valid updates are required' });
+  }
+
+  // 受け付けるキーは privacyLevel と revisionRequested のみ(どちらも boolean)
+  const updateKeys = Object.keys(updates);
+  const isValidUpdates =
+    updateKeys.length > 0 &&
+    updateKeys.every(key => UPDATABLE_POST_FIELDS.includes(key) && typeof updates[key] === 'boolean');
+  if (!isValidUpdates) {
+    return res.status(400).json({ message: 'Only privacyLevel and revisionRequested (boolean) can be updated' });
   }
 
   try {
     const postRef = db.collection('posts').doc(postId);
     const postSnapshot = await postRef.get();
 
-    if (!postSnapshot.exists) {
+    // 他人の投稿は存在を知らせないため 404 を返す
+    if (!postSnapshot.exists || postSnapshot.data().uid !== req.user.id) {
       return res.status(404).json({ message: 'Post not found' });
     }
 
