@@ -22,6 +22,13 @@ router.get('/', (req, res) => {
   res.send('Hello from API');
 });
 
+// JWT Cookie のオプション(設定時と削除時で同じ値を使う)
+const JWT_COOKIE_OPTIONS = {
+  httpOnly: true, // クライアント側のJavaScriptからはアクセス不可
+  secure: process.env.NODE_ENV === 'production', // HTTPS通信でのみ送信 (本番環境で有効)
+  sameSite: 'Strict', // CSRF攻撃を防ぐためのオプション
+};
+
 // トークン生成関数
 function generateJwtToken(userId) {
   const payload = { id: userId }; 
@@ -77,9 +84,7 @@ router.post('/auth/google/validate', async (req, res) => {
 
     // HttpOnly CookieにJWTを設定
     res.cookie('jwt', jwtToken, {
-      httpOnly: true, // クライアント側のJavaScriptからはアクセス不可
-      secure: process.env.NODE_ENV === 'production', // HTTPS通信でのみ送信 (本番環境で有効)
-      sameSite: 'Strict', // CSRF攻撃を防ぐためのオプション
+      ...JWT_COOKIE_OPTIONS,
       maxAge: 24 * 60 * 60 * 1000, // 1日（ミリ秒単位）
     });
 
@@ -93,6 +98,12 @@ router.post('/auth/google/validate', async (req, res) => {
     console.error('Error validating user:', error);
     res.status(500).json({ error: 'Server error' });
   }
+});
+
+// ログアウト(JWT Cookie を削除する)
+router.post('/auth/logout', (req, res) => {
+  res.clearCookie('jwt', JWT_COOKIE_OPTIONS);
+  res.status(200).json({ message: 'Logged out' });
 });
 
 // ユーザー設定エンドポイント
