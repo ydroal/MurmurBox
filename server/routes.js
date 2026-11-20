@@ -182,34 +182,6 @@ router.post('/post', verifyJwtToken, async (req, res) => {
 }
 });
 
-// Postsデータを取得するエンドポイント
-router.get('/posts', verifyJwtToken, async (req, res) => {
-
-  // verifyJwtTokenでreq.userがセットされているが、ゲストの場合は undefined
-  if (!req.user || !req.user.id) {
-    return res.status(403).send({ message: 'Access forbidden for guest users' });
-  }
-
-  try {
-    const snapshot = await db.collection('posts').get();
-    const posts = [];
-
-    // 取得したデータをPostクラスのインスタンスに変換
-    snapshot.forEach(doc => {
-      const post = Post.fromFirestore(doc);
-      posts.push(post);
-    });
-
-    res.json({ posts: posts.map(post => post.toJson())});
-  } catch (error) {
-    console.error('Postデータの取得中にエラーが発生しました:', error);
-    res.status(500).json({
-      success: false,
-      message: 'サーバーエラーが発生しました。Postデータの取得に失敗しました。',
-    });
-  }
-});
-
 // フィルタリングされたPostデータ（privacyLevel: false）とpostのユーザー情報を取得するエンドポイント
 router.get('/posts-with-details', verifyJwtToken, async (req, res) => {
 
