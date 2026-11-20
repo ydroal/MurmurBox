@@ -1,4 +1,4 @@
-const { db, admin } = require('../firebaseAdmin');
+const { db, Timestamp } = require('../firebaseAdmin');
 
 class Post {
   constructor({ postId, uid, jpText, frText, aiText, createdAt, privacyLevel, revisionRequested, comments, revisions }) {
@@ -54,7 +54,7 @@ class Post {
       jpText: this.jpText,
       frText: this.frText,
       aiText: this.aiText,
-      createdAt: this.createdAt instanceof admin.firestore.Timestamp ? this.createdAt.toDate().toISOString() : this.createdAt,
+      createdAt: this.createdAt instanceof Timestamp ? this.createdAt.toDate().toISOString() : this.createdAt,
       privacyLevel: this.privacyLevel,
       revisionRequested: this.revisionRequested,
       comments: this.comments,

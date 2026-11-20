@@ -1,4 +1,4 @@
-const { db, admin } = require('../firebaseAdmin');
+const { db, Timestamp } = require('../firebaseAdmin');
 
 class Dico {
   constructor({ dicoid, uid, term, definition, createdAt, alphabet }) {
@@ -44,7 +44,7 @@ class Dico {
       uid: this.uid,
       term: this.term,
       definition: this.definition,
-      createdAt: this.createdAt instanceof admin.firestore.Timestamp ? this.createdAt.toDate().toISOString() : this.createdAt,
+      createdAt: this.createdAt instanceof Timestamp ? this.createdAt.toDate().toISOString() : this.createdAt,
       alphabet: this.alphabet,
     };
     if (this.dicoid) {
