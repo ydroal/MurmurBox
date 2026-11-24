@@ -29,10 +29,16 @@ export const useUserStore = defineStore({
       // 認証状態の初期化完了を設定
       this.isInitialized = true;
     },
-    logout() {
+    async logout() {
       const postsStore = usePostsStore();
+      // サーバー側の JWT Cookie を削除する(失敗しても Firebase のログアウトは続ける)
+      try {
+        await axiosInstance.post('/auth/logout');
+      } catch (error) {
+        console.error('サーバーのログアウトエラー:', error);
+      }
       // Firebase Authenticationからログアウトする
-      signOut(auth)
+      await signOut(auth)
         .then(() => {
           this.$reset();
           postsStore.resetPostState();

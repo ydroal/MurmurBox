@@ -48,7 +48,11 @@ if (process.env.NODE_ENV === 'production') {
 //   res.send('Hello World!')
 // })
 
-// サーバーの起動
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+// サーバーの起動(テストから require したときは起動しない)
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Example app listening on port ${port}`)
+  })
+}
+
+module.exports = app;

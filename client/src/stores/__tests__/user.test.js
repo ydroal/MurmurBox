@@ -86,6 +86,18 @@ describe('User Store Tests', () => {
     expect(mockPostsStore.resetPostState).toHaveBeenCalled();
   });
 
+  it('should call the server logout endpoint to clear the cookie', async () => {
+    await userStore.logout();
+    expect(axiosInstance.post).toHaveBeenCalledWith('/auth/logout');
+  });
+
+  it('should still sign out of firebase when the server logout fails', async () => {
+    axiosInstance.post.mockRejectedValueOnce(new Error('Network Error'));
+    await userStore.logout();
+    expect(signOut).toHaveBeenCalledWith(auth);
+    expect(userStore.user).toBe(null);
+  });
+
   it('should update last visited edit me and user state', async () => {
     const mockUserData = {
       user: {

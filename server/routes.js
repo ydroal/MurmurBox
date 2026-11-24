@@ -10,6 +10,9 @@ const Post = require('./models/post');
 const Comment = require('./models/comment');
 const Correction = require('./models/correction');
 const Dico = require('./models/dico');
+const { MAX_CONTENT_LENGTH, MAX_USERNAME_LENGTH, normalizeText, isOwnProfileImageUrl } = require('./validators');
+const clientIp = require('./clientIp');
+const { consumeGuestQuota } = require('./guestQuota');
 
 const authKey = process.env.DEEPL_API_KEY;
 const translator = new deepl.Translator(authKey);
@@ -19,11 +22,31 @@ router.get('/', (req, res) => {
   res.send('Hello from API');
 });
 
+// JWT Cookie のオプション(設定時と削除時で同じ値を使う)
+const JWT_COOKIE_OPTIONS = {
+  httpOnly: true, // クライアント側のJavaScriptからはアクセス不可
+  secure: process.env.NODE_ENV === 'production', // HTTPS通信でのみ送信 (本番環境で有効)
+  sameSite: 'Strict', // CSRF攻撃を防ぐためのオプション
+};
+
 // トークン生成関数
 function generateJwtToken(userId) {
   const payload = { id: userId }; 
   const jwtSecret = process.env.JWT_SECRET;
   return jwt.sign(payload, jwtSecret, { expiresIn: '1d' }); // 有効期限を1日とする
+}
+
+// 作者のユーザーが存在しないときの表示用
+const DELETED_USER = { username: '退会したユーザー', profileImageUrl: '' };
+
+// 閲覧できる投稿を返す。存在しない、または非公開で本人以外の場合は null(呼び出し側で 404 にする)
+async function getReadablePost(postId, userId) {
+  if (typeof postId !== 'string' || !postId || postId.includes('/')) return null;
+  const postDoc = await db.collection('posts').doc(postId).get();
+  if (!postDoc.exists) return null;
+  const postData = postDoc.data();
+  if (postData.privacyLevel === true && postData.uid !== userId) return null;
+  return postData;
 }
 
 // ユーザー認証エンドポイント
@@ -64,9 +87,7 @@ router.post('/auth/google/validate', async (req, res) => {
 
     // HttpOnly CookieにJWTを設定
     res.cookie('jwt', jwtToken, {
-      httpOnly: true, // クライアント側のJavaScriptからはアクセス不可
-      secure: process.env.NODE_ENV === 'production', // HTTPS通信でのみ送信 (本番環境で有効)
-      sameSite: 'Strict', // CSRF攻撃を防ぐためのオプション
+      ...JWT_COOKIE_OPTIONS,
       maxAge: 24 * 60 * 60 * 1000, // 1日（ミリ秒単位）
     });
 
@@ -82,15 +103,21 @@ router.post('/auth/google/validate', async (req, res) => {
   }
 });
 
+// ログアウト(JWT Cookie を削除する)
+router.post('/auth/logout', (req, res) => {
+  res.clearCookie('jwt', JWT_COOKIE_OPTIONS);
+  res.status(200).json({ message: 'Logged out' });
+});
+
 // ユーザー設定エンドポイント
 router.put('/user/update', verifyJwtToken, async (req, res) => {
   try {
     // JWT からユーザー ID を取得
-    const userId = req.user.id; // verifyJwtToken ミドルウェアにより req.user がセットされている
-
-    if (!userId) {
+    // ゲストの場合は req.user が undefined
+    if (!req.user || !req.user.id) {
       return res.status(403).send({ message: 'Access forbidden for guest users' });
     }
+    const userId = req.user.id; // verifyJwtToken ミドルウェアにより req.user がセットされている
 
     // Firestore からユーザーデータを取得
     const userDoc = await db.collection('users').doc(userId).get();
@@ -105,8 +132,20 @@ router.put('/user/update', verifyJwtToken, async (req, res) => {
     // リクエストから新しいデータを取得
     const { username, profileImageUrl } = req.body;
 
+    // 指定された項目だけ検証する(未指定なら今の値を保つ)
+    let newUsername = user.username;
+    if (username !== undefined) {
+      newUsername = normalizeText(username, MAX_USERNAME_LENGTH);
+      if (newUsername === null) {
+        return res.status(400).send({ message: `username must be 1-${MAX_USERNAME_LENGTH} characters` });
+      }
+    }
+    if (profileImageUrl !== undefined && !isOwnProfileImageUrl(profileImageUrl, userId, process.env.FIREBASE_STORAGE_BUCKET)) {
+      return res.status(400).send({ message: 'profileImageUrl must be an image uploaded to your own profile folder' });
+    }
+
     // ユーザーデータを更新
-    user.username = username || user.username;
+    user.username = newUsername;
     user.profileImageUrl = profileImageUrl || user.profileImageUrl;
     user.lastLogin = new Date(); // 最終ログイン日を更新
 
@@ -151,6 +190,25 @@ router.post('/post', verifyJwtToken, async (req, res) => {
   try {
     const { jpText, frText, privacyLevel, revisionRequested } = req.body;
 
+    // 文字数の上限(DeepL の利用量を抑える)
+    if (
+      typeof jpText !== 'string' || jpText.trim().length === 0 || jpText.length > MAX_CONTENT_LENGTH ||
+      typeof frText !== 'string' || frText.length > MAX_CONTENT_LENGTH
+    ) {
+      return res.status(400).json({ error: `jpText (1-${MAX_CONTENT_LENGTH} characters) and frText (up to ${MAX_CONTENT_LENGTH} characters) are required` });
+    }
+
+    // ゲストは IP ごと・全体の上限を確認してから翻訳する
+    if (!req.user) {
+      const ip = clientIp.getClientIp(req);
+      if (!ip) {
+        return res.status(403).json({ error: 'Cannot identify the client' });
+      }
+      const quota = await consumeGuestQuota(ip, jpText.length);
+      if (!quota.ok) {
+        return res.status(429).json({ error: 'Too many translation requests. Please log in or try again later.' });
+      }
+    }
 
     // テキストを翻訳する
     const result = await translator.translateText(jpText, 'ja', 'fr', { split_sentences: 'nonewlines' });
@@ -182,34 +240,6 @@ router.post('/post', verifyJwtToken, async (req, res) => {
 }
 });
 
-// Postsデータを取得するエンドポイント
-router.get('/posts', verifyJwtToken, async (req, res) => {
-
-  // verifyJwtTokenでreq.userがセットされているが、ゲストの場合は undefined
-  if (!req.user || !req.user.id) {
-    return res.status(403).send({ message: 'Access forbidden for guest users' });
-  }
-
-  try {
-    const snapshot = await db.collection('posts').get();
-    const posts = [];
-
-    // 取得したデータをPostクラスのインスタンスに変換
-    snapshot.forEach(doc => {
-      const post = Post.fromFirestore(doc);
-      posts.push(post);
-    });
-
-    res.json({ posts: posts.map(post => post.toJson())});
-  } catch (error) {
-    console.error('Postデータの取得中にエラーが発生しました:', error);
-    res.status(500).json({
-      success: false,
-      message: 'サーバーエラーが発生しました。Postデータの取得に失敗しました。',
-    });
-  }
-});
-
 // フィルタリングされたPostデータ（privacyLevel: false）とpostのユーザー情報を取得するエンドポイント
 router.get('/posts-with-details', verifyJwtToken, async (req, res) => {
 
@@ -224,17 +254,12 @@ router.get('/posts-with-details', verifyJwtToken, async (req, res) => {
       .orderBy('createdAt', 'desc')
       .get(); //getはPromiseを返しawaitで結果をpostsSnapshotに格納
 
-    if (postsSnapshot.empty) {
-      return res.status(404).json({ message: 'No posts found' });
-    }
-
+    // 0 件のときは空配列を返す
       const postsDetailedInfo = await Promise.all(postsSnapshot.docs.map(async (postDoc) => {
         const postData = postDoc.data();
         const userSnapshot = await db.collection('users').doc(postData.uid).get();
-        if (!userSnapshot.exists) {
-          console.error(`ユーザードキュメントが見つかりません: ${postData.uid}`);
-        };
-        const user = userSnapshot.data();
+        // 作者が存在しない(退会済みなど)場合も、投稿は返す
+        const user = userSnapshot.exists ? userSnapshot.data() : DELETED_USER;
   
         // コメント数をカウント
         const commentCountSnapshot = await db.collection('comments').where('postId', '==', postDoc.id).get();
@@ -273,15 +298,14 @@ router.get('/post-details/:postId', verifyJwtToken, async (req, res) => {
   
   const postId = req.params.postId;
   try {
-    const postDoc = await db.collection('posts').doc(postId).get();
+    const postData = await getReadablePost(postId, req.user.id);
 
-    if (!postDoc.exists) {
+    if (!postData) {
       return res.status(404).send({ message: 'Post not found' });
     }
 
-    const postData = postDoc.data();
     const userSnapshot = await db.collection('users').doc(postData.uid).get();
-    const user = userSnapshot.data();
+    const user = userSnapshot.exists ? userSnapshot.data() : DELETED_USER;
 
     const commentCountSnapshot = await db.collection('comments').where('postId', '==', postId).get();
     const commentCount = commentCountSnapshot.size;
@@ -289,7 +313,7 @@ router.get('/post-details/:postId', verifyJwtToken, async (req, res) => {
     const correctionCountSnapshot = await db.collection('corrections').where('postId', '==', postId).get();
     const correctionCount = correctionCountSnapshot.size;
 
-    const createdAt = new Date(postData.createdAt);
+    const createdAt = postData.createdAt.toDate().toISOString();
 
     res.status(200).json({
       ...postData,
@@ -343,6 +367,7 @@ router.get('/my-posts', verifyJwtToken, async (req, res) => {
 });
 
 // Postデータを更新するAPIエンドポイント
+const UPDATABLE_POST_FIELDS = ['privacyLevel', 'revisionRequested'];
 router.put('/update-post-details', verifyJwtToken, async (req, res) => {
 
   if (!req.user || !req.user.id) {
@@ -351,15 +376,25 @@ router.put('/update-post-details', verifyJwtToken, async (req, res) => {
 
   const { postId, updates } = req.body;
 
-  if (!postId || !updates || typeof updates !== 'object') {
+  if (!postId || typeof postId !== 'string' || !updates || typeof updates !== 'object' || Array.isArray(updates)) {
     return res.status(400).json({ message: 'Post ID and valid updates are required' });
+  }
+
+  // 受け付けるキーは privacyLevel と revisionRequested のみ(どちらも boolean)
+  const updateKeys = Object.keys(updates);
+  const isValidUpdates =
+    updateKeys.length > 0 &&
+    updateKeys.every(key => UPDATABLE_POST_FIELDS.includes(key) && typeof updates[key] === 'boolean');
+  if (!isValidUpdates) {
+    return res.status(400).json({ message: 'Only privacyLevel and revisionRequested (boolean) can be updated' });
   }
 
   try {
     const postRef = db.collection('posts').doc(postId);
     const postSnapshot = await postRef.get();
 
-    if (!postSnapshot.exists) {
+    // 他人の投稿は存在を知らせないため 404 を返す
+    if (!postSnapshot.exists || postSnapshot.data().uid !== req.user.id) {
       return res.status(404).json({ message: 'Post not found' });
     }
 
@@ -376,25 +411,34 @@ router.put('/update-post-details', verifyJwtToken, async (req, res) => {
   }
 });
 
-// コメントの追加エンドポイント
-router.post('/comments', verifyJwtToken, async (req, res) => {
-
+// コメント・添削の追加(作成と投稿への ID 追加を 1 回の batch で行う)
+async function addPostReply(req, res, { collection, arrayField, Model, idKey, errorMessage }) {
   if (!req.user || !req.user.id) {
     return res.status(403).send({ message: 'Access forbidden for guest users' });
   }
 
-  const { postId, content } = req.body;
-  if (!postId || !content) {
-    return res.status(400).send({ message: 'Post ID and content are required' });
+  const { postId } = req.body;
+  const content = normalizeText(req.body.content, MAX_CONTENT_LENGTH);
+  if (!postId || typeof postId !== 'string' || content === null) {
+    return res.status(400).send({
+      message: `Post ID and content (1-${MAX_CONTENT_LENGTH} characters) are required`
+    });
   }
 
   try {
+    // 存在しない、または非公開で本人以外の投稿には書き込めない
+    if (!(await getReadablePost(postId, req.user.id))) {
+      return res.status(404).send({ message: 'Post not found' });
+    }
+
     // ユーザー情報を取得
     const userSnapshot = await db.collection('users').doc(req.user.id).get();
+    if (!userSnapshot.exists) {
+      return res.status(404).send({ message: 'User not found' });
+    }
     const userData = userSnapshot.data();
 
-    // 新しいコメントを作成
-    const newComment = new Comment({
+    const item = new Model({
       postId,
       uid: req.user.id,
       username: userData.username,
@@ -403,21 +447,32 @@ router.post('/comments', verifyJwtToken, async (req, res) => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    await newComment.save();
-    const commentId = newComment.commentId;
 
-    // Postモデルの comments 配列に新しいコメントIDを追加
-    const postRef = db.collection('posts').doc(postId);
-    await postRef.update({
-      comments: FieldValue.arrayUnion(commentId)
-    });
+    // ドキュメントの作成と、投稿の配列への ID 追加を同時に行う
+    const itemRef = db.collection(collection).doc();
+    const batch = db.batch();
+    batch.set(itemRef, item.toJson());
+    batch.update(db.collection('posts').doc(postId), { [arrayField]: FieldValue.arrayUnion(itemRef.id) });
+    await batch.commit();
 
-    res.status(201).json(newComment.toJson());
+    item[idKey] = itemRef.id;
+    res.status(201).json(item.toJson());
   } catch (error) {
-    console.error('コメントの追加に失敗しました:', error);
-    res.status(500).send({ message: 'コメントの追加に失敗しました' });
+    console.error(`${errorMessage}:`, error);
+    res.status(500).send({ message: errorMessage });
   }
-});
+}
+
+// コメントの追加エンドポイント
+router.post('/comments', verifyJwtToken, (req, res) =>
+  addPostReply(req, res, {
+    collection: 'comments',
+    arrayField: 'comments',
+    Model: Comment,
+    idKey: 'commentId',
+    errorMessage: 'コメントの追加に失敗しました'
+  })
+);
 
 // 特定のPostに紐づくコメントを取得
 router.get('/comments/:postId', verifyJwtToken, async (req, res) => {
@@ -428,6 +483,9 @@ router.get('/comments/:postId', verifyJwtToken, async (req, res) => {
 
   const postId = req.params.postId;
   try {
+      if (!(await getReadablePost(postId, req.user.id))) {
+        return res.status(404).send({ message: 'Post not found' });
+      }
       const commentsSnapshot = await db.collection('comments').where('postId', '==', postId).get();
 
       const comments = commentsSnapshot.empty ? [] : commentsSnapshot.docs.map(doc => {
@@ -444,47 +502,15 @@ router.get('/comments/:postId', verifyJwtToken, async (req, res) => {
 });
 
 // 添削の追加エンドポイント
-router.post('/corrections', verifyJwtToken, async (req, res) => {
-  if (!req.user || !req.user.id) {
-    return res.status(403).send({ message: 'Access forbidden for guest users' });
-  }
-
-  const { postId, content } = req.body;
-  if (!postId || !content) {
-    return res.status(400).send({ message: 'Post ID and content are required' });
-  }
-
-  try {
-    // ユーザー情報を取得
-    const userSnapshot = await db.collection('users').doc(req.user.id).get();
-    const userData = userSnapshot.data();
-
-    // 新しい添削を作成
-    const newCorrection = new Correction({
-      postId,
-      uid: req.user.id,
-      username: userData.username,
-      profileImageUrl: userData.profileImageUrl,
-      content,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    await newCorrection.save();
-    const correctionId = newCorrection.correctionId;
-
-    // Postモデルのrevisions配列に新しいコメントIDを追加
-    const postRef = db.collection('posts').doc(postId);
-    await postRef.update({
-      revisions: FieldValue.arrayUnion(correctionId)
-    });
-
-    res.status(201).json(newCorrection.toJson());
-  } catch (error) {
-    console.error('添削の追加に失敗しました:', error);
-    res.status(500).send({ message: '添削の追加に失敗しました' });
-  }
-});
+router.post('/corrections', verifyJwtToken, (req, res) =>
+  addPostReply(req, res, {
+    collection: 'corrections',
+    arrayField: 'revisions',
+    Model: Correction,
+    idKey: 'correctionId',
+    errorMessage: '添削の追加に失敗しました'
+  })
+);
 
 // 特定のPostに紐づく添削を取得
 router.get('/corrections/:postId', verifyJwtToken, async (req, res) => {
@@ -495,6 +521,9 @@ router.get('/corrections/:postId', verifyJwtToken, async (req, res) => {
 
   const postId = req.params.postId;
   try {
+    if (!(await getReadablePost(postId, req.user.id))) {
+      return res.status(404).send({ message: 'Post not found' });
+    }
     const correctionsSnapshot = await db.collection('corrections').where('postId', '==', postId).get();
 
     const corrections = correctionsSnapshot.empty ? [] : correctionsSnapshot.docs.map(doc => {

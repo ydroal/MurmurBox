@@ -7,7 +7,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "firebase emulators:exec --only firestore --project demo-murmurbox \"vitest run\"",
     "start": "NODE_ENV=production node app.js",
     "dev": "op run --environment=45t2junuunbshbz737n6aifwam -- nodemon app.js"
   },
@@ -23,6 +23,9 @@
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0"
+    "firebase-tools": "15.37.0",
+    "nodemon": "^3.1.0",
+    "supertest": "7.3.2",
+    "vitest": "5.1.1"
   }
 }
